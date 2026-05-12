@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hustlers Labs | Web3 Growth & Marketing</title>
+  <meta name="description" content="We help Web3 founders and startups grow faster with strategy, execution, and community." />
+  <meta property="og:title" content="Hustlers Labs | Web3 Growth & Marketing" />
+  <meta property="og:description" content="Built by hustlers, for hustlers. Web3 growth experts." />
+  <meta property="og:url" content="https://hustlerslabs.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #fff;
+      color: #0a0a0a;
+      width: 100%;
+      overflow-x: hidden;
+    }
+
+    @keyframes glitch-1 {
+      0%, 90%, 100% { clip-path: none; transform: none; }
+      91% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 0); }
+      93% { clip-path: inset(50% 0 20% 0); transform: translate(3px, 0); }
+      95% { clip-path: inset(70% 0 5% 0); transform: translate(-2px, 0); }
+      97% { clip-path: none; transform: none; }
+    }
+
+    @keyframes glitch-2 {
+      0%, 88%, 100% { clip-path: none; transform: none; opacity: 1; }
+      89% { clip-path: inset(30% 0 50% 0); transform: translate(4px, 0); opacity: 0.8; }
+      91% { clip-path: inset(10% 0 80% 0); transform: translate(-4px, 0); opacity: 0.9; }
+      93% { clip-path: none; transform: none; opacity: 1; }
+    }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(500%); }
+    }
+
+    @keyframes flicker {
+      0%, 95%, 100% { opacity: 1; }
+      96% { opacity: 0.85; }
+      97% { opacity: 1; }
+      98% { opacity: 0.9; }
+    }
+
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    @keyframes glitch-text {
+      0%, 85%, 100% { text-shadow: none; }
+      86% { text-shadow: -2px 0 #000, 2px 0 #555; }
+      88% { text-shadow: 2px 0 #000, -2px 0 #333; }
+      90% { text-shadow: none; }
+    }
+
+    @keyframes stat-glitch {
+      0%, 92%, 100% { text-shadow: none; transform: none; }
+      93% { text-shadow: 2px 0 #aaa; transform: translateX(-1px); }
+      95% { text-shadow: -2px 0 #000; transform: translateX(2px); }
+      97% { text-shadow: none; transform: none; }
+    }
+
+    /* NAV */
+    .hl-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 3rem;
+      border-bottom: 1px solid #e8e8e8;
+      position: sticky;
+      top: 0;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+    }
+
+    .hl-logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0a0a0a;
+      position: relative;
+      animation: glitch-text 7s infinite;
+      text-decoration: none;
+    }
+
+    .hl-logo::before {
+      content: 'HustlersLabs';
+      position: absolute;
+      left: 0; top: 0;
+      color: #0a0a0a;
+      animation: glitch-1 7s infinite;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .hl-logo span { color: #999; }
+
+    .hl-nav-links {
+      display: flex;
+      gap: 2.5rem;
+      list-style: none;
+    }
+
+    .hl-nav-links a {
+      font-size: 13px;
+      color: #666;
+      text-decoration: none;
+      transition: color 0.1s;
+    }
+
+    .hl-nav-links a:hover { color: #0a0a0a; }
+
+    .hl-nav-cta {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 8px 16px;
+      border: 1px solid #0a0a0a;
+      border-radius: 4px;
+      color: #0a0a0a;
+      text-decoration: none;
+      background: transparent;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .hl-nav-cta:hover { background: #0a0a0a; color: #fff; }
+
+    /* HERO */
+    .hl-hero {
+      padding: 6rem 3rem 5rem;
+      border-bottom: 1px solid #e8e8e8;
+      position: relative;
+      overflow: hidden;
+      max-width: 100%;
+    }
+
+    .hl-hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.012) 2px,
+        rgba(0,0,0,0.012) 4px
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .hl-hero-content { position: relative; z-index: 2; }
+
+    .hl-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #999;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hl-tag::before {
+      content: '';
+      display: inline-block;
+      width: 24px;
+      height: 1px;
+      background: #ccc;
+    }
+
+    .hl-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 12px;
+      background: #999;
+      margin-left: 4px;
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+
+    .hl-hero h1 {
+      font-size: clamp(36px, 6vw, 60px);
+      font-weight: 300;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      color: #0a0a0a;
+      margin-bottom: 1.75rem;
+      max-width: 600px;
+      position: relative;
+      animation: glitch-text 9s infinite;
+    }
+
+    .hl-hero h1::before {
+      content: 'from ideas to\Aimpact in web3';
+      white-space: pre;
+      position: absolute;
+      left: 0; top: 0;
+      color: #0a0a0a;
+      animation: glitch-2 9s infinite;
+      pointer-events: none;
+    }
+
+    .hl-hero h1 em {
+      font-style: italic;
+      font-weight: 300;
+    }
+
+    .hl-hero p {
+      font-size: 16px;
+      color: #666;
+      line-height: 1.75;
+      max-width: 420px;
+      margin-bottom: 2.5rem;
+    }
+
+    .hl-hero-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 12px 24px;
+      background: #0a0a0a;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      transition: opacity 0.15s;
+    }
+
+    .hl-hero-cta:hover { opacity: 0.8; }
+
+    .hl-glitch-stripe {
+      position: absolute;
+      right: 3rem;
+      top: 5rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: #e0e0e0;
+      letter-spacing: 0.08em;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      line-height: 2;
+      user-select: none;
+      animation: flicker 4s infinite;
+    }
+
+    /* STATS */
+    .hl-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid #e8e8e8;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hl-stats::after {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; right: 0;
+      height: 2px;
+      background: #0a0a0a;
+      animation: scanline 3s linear infinite;
+      opacity: 0.06;
+      pointer-events: none;
+    }
+
+    .hl-stat {
+      padding: 2.5rem 3rem;
+      border-right: 1px solid #e8e8e8;
+    }
+
+    .hl-stat:last-child { border-right: none; }
+
+    .hl-stat-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 32px;
+      font-weight: 300;
+      color: #0a0a0a;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.4rem;
+      animation: stat-glitch 8s infinite;
+    }
+
+    .hl-stat:nth-child(2) .hl-stat-num { animation-delay: 1.5s; }
+    .hl-stat:nth-child(3) .hl-stat-num { animation-delay: 3s; }
+    .hl-stat:nth-child(4) .hl-stat-num { animation-delay: 4.5s; }
+
+    .hl-stat-label {
+      font-size: 11px;
+      color: #bbb;
+      letter-spacing: 0.04em;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* SECTIONS */
+    .hl-section {
+      padding: 4rem 3rem;
+      border-bottom: 1px solid #e8e8e8;
+    }
+
+    .hl-section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #ccc;
+      margin-bottom: 3rem;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .hl-section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #f0f0f0;
+    }
+
+    /* WHO WE HELP */
+    .hl-stages {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: #e8e8e8;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .hl-stage-card {
+      background: #fff;
+      padding: 2rem;
+      transition: background 0.15s;
+    }
+
+    .hl-stage-card:hover { background: #fafafa; }
+
+    .hl-stage-card:nth-child(2) { border-left: 3px solid #0a0a0a; }
+
+    .hl-stage-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: #ddd;
+      margin-bottom: 1rem;
+      letter-spacing: 0.1em;
+    }
+
+    .hl-stage-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: #0a0a0a;
+      margin-bottom: 0.6rem;
+    }
+
+    .hl-stage-desc {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.65;
+    }
+
+    /* SERVICES */
+    .hl-services { display: flex; flex-direction: column; }
+
+    .hl-service-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 1.75rem 0;
+      border-bottom: 1px solid #f0f0f0;
+      gap: 2rem;
+      cursor: default;
+      transition: padding-left 0.2s;
+      position: relative;
+    }
+
+    .hl-service-row::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 0;
+      background: #0a0a0a;
+      transition: width 0.15s;
+    }
+
+    .hl-service-row:hover::before { width: 2px; }
+    .hl-service-row:hover { padding-left: 14px; }
+    .hl-service-row:last-child { border-bottom: none; }
+
+    .hl-service-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.5rem;
+      flex: 1;
+    }
+
+    .hl-service-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: #ddd;
+      min-width: 20px;
+      padding-top: 3px;
+      letter-spacing: 0.08em;
+    }
+
+    .hl-service-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: #0a0a0a;
+      margin-bottom: 0.3rem;
+    }
+
+    .hl-service-desc {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.6;
+    }
+
+    /* TEAM */
+    .hl-team-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .hl-team-card {
+      padding: 1.1rem 1.25rem;
+      border: 1px solid #f0f0f0;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.15s, transform 0.15s;
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hl-team-card::after {
+      content: '↗';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 12px;
+      color: #ddd;
+      transition: color 0.15s;
+    }
+
+    .hl-team-card:hover { border-color: #0a0a0a; transform: translateY(-1px); }
+    .hl-team-card:hover::after { color: #888; }
+
+    .hl-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: #888;
+      flex-shrink: 0;
+      font-weight: 500;
+      border: 1px solid #ebebeb;
+    }
+
+    .hl-team-handle {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: #0a0a0a;
+    }
+
+    .hl-team-sub {
+      font-size: 10px;
+      color: #bbb;
+      margin-top: 2px;
+      letter-spacing: 0.04em;
+    }
+
+    /* CONTACT */
+    .hl-contact {
+      padding: 5rem 3rem;
+      border-bottom: 1px solid #e8e8e8;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 3rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hl-contact::before {
+      content: 'CONNECT';
+      position: absolute;
+      right: 2rem;
+      bottom: -1rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 90px;
+      font-weight: 500;
+      color: #f5f5f5;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      user-select: none;
+      pointer-events: none;
+      animation: flicker 6s infinite;
+    }
+
+    .hl-contact-left { position: relative; z-index: 2; }
+
+    .hl-contact-left h2 {
+      font-size: 32px;
+      font-weight: 300;
+      letter-spacing: -0.025em;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+
+    .hl-contact-left p {
+      font-size: 14px;
+      color: #888;
+      line-height: 1.75;
+      max-width: 340px;
+    }
+
+    .hl-contact-right {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 200px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .hl-contact-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #0a0a0a;
+      text-decoration: none;
+      padding: 11px 16px;
+      border: 1px solid #ebebeb;
+      border-radius: 6px;
+      transition: border-color 0.15s, background 0.15s;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }
+
+    .hl-contact-link:hover { border-color: #0a0a0a; background: #fafafa; }
+    .hl-contact-link i { font-size: 16px; color: #888; }
+
+    .hl-contact-link.primary {
+      background: #0a0a0a;
+      border-color: #0a0a0a;
+      color: #fff;
+    }
+
+    .hl-contact-link.primary i { color: #aaa; }
+    .hl-contact-link.primary:hover { opacity: 0.85; }
+
+    /* FOOTER */
+    .hl-footer {
+      padding: 1.75rem 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .hl-footer-logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: #ccc;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hl-footer-links {
+      display: flex;
+      gap: 1.75rem;
+      align-items: center;
+    }
+
+    .hl-footer-links a {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: #bbb;
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      transition: color 0.15s;
+    }
+
+    .hl-footer-links a:hover { color: #0a0a0a; }
+
+    .hl-footer-dot { width: 3px; height: 3px; background: #ddd; border-radius: 50%; }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .hl-nav { padding: 1rem 1.5rem; }
+      .hl-nav-links { display: none; }
+      .hl-hero { padding: 4rem 1.5rem 3rem; }
+      .hl-glitch-stripe { display: none; }
+      .hl-stats { grid-template-columns: repeat(2, 1fr); }
+      .hl-stat { padding: 1.5rem; }
+      .hl-section { padding: 3rem 1.5rem; }
+      .hl-stages { grid-template-columns: 1fr; }
+      .hl-team-grid { grid-template-columns: repeat(2, 1fr); }
+      .hl-contact { flex-direction: column; padding: 3rem 1.5rem; }
+      .hl-contact::before { font-size: 50px; }
+      .hl-footer { padding: 1.5rem; flex-direction: column; gap: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="hl-nav">
+    <a href="#" class="hl-logo">Hustlers<span>Labs</span></a>
+    <ul class="hl-nav-links">
+      <li><a href="#services">services</a></li>
+      <li><a href="#about">about</a></li>
+      <li><a href="#team">team</a></li>
+      <li><a href="#contact">contact</a></li>
+    </ul>
+    <a href="https://calendly.com/hustlerslabs/30min" class="hl-nav-cta" target="_blank" rel="noopener">book a call ↗</a>
+  </nav>
+
+  <section class="hl-hero">
+    <div class="hl-glitch-stripe">WEB3 · GROWTH · EXECUTION · STRATEGY · COMMUNITY · WEB3 · GROWTH · EXECUTION</div>
+    <div class="hl-hero-content">
+      <div class="hl-tag">web3 growth & marketing<span class="hl-cursor"></span></div>
+      <h1>from <em>ideas</em> to<br>impact in web3</h1>
+      <p>we help web3 founders and startups grow faster with strategy, execution, and community. built by operators, for operators.</p>
+      <a href="https://calendly.com/hustlerslabs/30min" class="hl-hero-cta" target="_blank" rel="noopener">
+        <i class="ti ti-calendar"></i>
+        schedule a free call
+      </a>
+    </div>
+  </section>
+
+  <div class="hl-stats">
+    <div class="hl-stat">
+      <div class="hl-stat-num">31+</div>
+      <div class="hl-stat-label">campaigns launched</div>
+    </div>
+    <div class="hl-stat">
+      <div class="hl-stat-num">350k+</div>
+      <div class="hl-stat-label">monthly reach</div>
+    </div>
+    <div class="hl-stat">
+      <div class="hl-stat-num">12+</div>
+      <div class="hl-stat-label">channels</div>
+    </div>
+    <div class="hl-stat">
+      <div class="hl-stat-num">200+</div>
+      <div class="hl-stat-label">kols in network</div>
+    </div>
+  </div>
+
+  <section class="hl-section" id="services">
+    <div class="hl-section-label">who we help</div>
+    <div class="hl-stages">
+      <div class="hl-stage-card">
+        <div class="hl-stage-num">01</div>
+        <div class="hl-stage-title">early-stage founders</div>
+        <div class="hl-stage-desc">build traction, raise awareness, and validate your project before scaling.</div>
+      </div>
+      <div class="hl-stage-card">
+        <div class="hl-stage-num">02</div>
+        <div class="hl-stage-title">scaling startups</div>
+        <div class="hl-stage-desc">expand community, refine brand, and accelerate growth to the next level.</div>
+      </div>
+      <div class="hl-stage-card">
+        <div class="hl-stage-num">03</div>
+        <div class="hl-stage-title">established projects</div>
+        <div class="hl-stage-desc">strengthen retention, partnerships, and long-term sustainability.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hl-section">
+    <div class="hl-section-label">our services</div>
+    <div class="hl-services">
+      <div class="hl-service-row">
+        <div class="hl-service-left">
+          <div class="hl-service-num">01</div>
+          <div>
+            <div class="hl-service-title">go-to-market strategy</div>
+            <div class="hl-service-desc">launch plans, narrative design, and positioning that resonate with your audience.</div>
+          </div>
+        </div>
+        <i class="ti ti-arrow-right" style="font-size:15px; color:#ddd; margin-top:3px; flex-shrink:0;"></i>
+      </div>
+      <div class="hl-service-row">
+        <div class="hl-service-left">
+          <div class="hl-service-num">02</div>
+          <div>
+            <div class="hl-service-title">community growth & engagement</div>
+            <div class="hl-service-desc">from 0 to thriving — we build, manage, and scale loyal communities.</div>
+          </div>
+        </div>
+        <i class="ti ti-arrow-right" style="font-size:15px; color:#ddd; margin-top:3px; flex-shrink:0;"></i>
+      </div>
+      <div class="hl-service-row">
+        <div class="hl-service-left">
+          <div class="hl-service-num">03</div>
+          <div>
+            <div class="hl-service-title">content & storytelling</div>
+            <div class="hl-service-desc">blogs, newsletters, social, and thought leadership that build trust.</div>
+          </div>
+        </div>
+        <i class="ti ti-arrow-right" style="font-size:15px; color:#ddd; margin-top:3px; flex-shrink:0;"></i>
+      </div>
+      <div class="hl-service-row">
+        <div class="hl-service-left">
+          <div class="hl-service-num">04</div>
+          <div>
+            <div class="hl-service-title">partnerships & ecosystem</div>
+            <div class="hl-service-desc">connect with investors, influencers, and ecosystem players that move the needle.</div>
+          </div>
+        </div>
+        <i class="ti ti-arrow-right" style="font-size:15px; color:#ddd; margin-top:3px; flex-shrink:0;"></i>
+      </div>
+      <div class="hl-service-row">
+        <div class="hl-service-left">
+          <div class="hl-service-num">05</div>
+          <div>
+            <div class="hl-service-title">advisory & mentorship</div>
+            <div class="hl-service-desc">work side-by-side with experienced web3 operators.</div>
+          </div>
+        </div>
+        <i class="ti ti-arrow-right" style="font-size:15px; color:#ddd; margin-top:3px; flex-shrink:0;"></i>
+      </div>
+    </div>
+  </section>
+
+  <section class="hl-section" id="team">
+    <div class="hl-section-label">the team</div>
+    <div class="hl-team-grid">
+      <a href="https://x.com/WYdaGOAT" class="hl-team-card" target="_blank" rel="noopener">
+        <div class="hl-avatar">WG</div>
+        <div>
+          <div class="hl-team-handle">@wydagoat</div>
+          <div class="hl-team-sub">founder</div>
+        </div>
+      </a>
+      <a href="https://x.com/_sammified" class="hl-team-card" target="_blank" rel="noopener">
+        <div class="hl-avatar">CH</div>
+        <div>
+          <div class="hl-team-handle">@cryptohitmaniac</div>
+          <div class="hl-team-sub">kol / operator</div>
+        </div>
+      </a>
+      <a href="https://x.com/Cryptohitmaniac" class="hl-team-card" target="_blank" rel="noopener">
+        <div class="hl-avatar">MM</div>
+        <div>
+          <div class="hl-team-handle">@mayamaster</div>
+          <div class="hl-team-sub">kol / operator</div>
+        </div>
+      </a>
+      <a href="https://x.com/Bitqueen01" class="hl-team-card" target="_blank" rel="noopener">
+        <div class="hl-avatar">AR</div>
+        <div>
+          <div class="hl-team-handle">@anzaisrekt</div>
+          <div class="hl-team-sub">kol / operator</div>
+        </div>
+      </a>
+      <a href="https://twitter.com/cryptoohungry" class="hl-team-card" target="_blank" rel="noopener">
+        <div class="hl-avatar">CH</div>
+        <div>
+          <div class="hl-team-handle">@cryptoohungry</div>
+          <div class="hl-team-sub">kol / operator</div>
+        </div>
+      </a>
+      <a href="https://x.com/ExquisiteAlts" class="hl-team-card" target="_blank" rel="noopener">
+        <div class="hl-avatar">RN</div>
+        <div>
+          <div class="hl-team-handle">@rnvisbored</div>
+          <div class="hl-team-sub">kol / operator</div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <div class="hl-contact" id="contact">
+    <div class="hl-contact-left">
+      <h2>free 20-minute<br>strategy call</h2>
+      <p>get custom strategies to scale your web3 project. in 20 minutes you'll walk away with actionable steps for marketing, community growth, and positioning.</p>
+    </div>
+    <div class="hl-contact-right">
+      <a href="https://calendly.com/hustlerslabs/30min" class="hl-contact-link primary" target="_blank" rel="noopener">
+        <i class="ti ti-calendar"></i>
+        book a call
+      </a>
+      <a href="https://x.com/HustlersLabs" class="hl-contact-link" target="_blank" rel="noopener">
+        <i class="ti ti-brand-x"></i>
+        x / twitter
+      </a>
+      <a href="https://t.me/hustlerslabs" class="hl-contact-link" target="_blank" rel="noopener">
+        <i class="ti ti-brand-telegram"></i>
+        telegram
+      </a>
+    </div>
+  </div>
+
+  <footer class="hl-footer">
+    <div class="hl-footer-logo">© 2026 hustlers labs</div>
+    <div class="hl-footer-links">
+      <a href="https://x.com/HustlersLabs" target="_blank" rel="noopener">twitter</a>
+      <div class="hl-footer-dot"></div>
+      <a href="https://t.me/hustlerslabs" target="_blank" rel="noopener">telegram</a>
+      <div class="hl-footer-dot"></div>
+      <a href="https://www.hustlerslabs.com/blog" target="_blank" rel="noopener">blog</a>
+    </div>
+  </footer>
+
+</body>
+</html>
