@@ -8,8 +8,10 @@ import { requireMember, SESSION_COOKIE } from "@/lib/auth";
 import { decrypt, encrypt, sha256 } from "@/lib/crypto";
 import { hashPassword, validatePassword, verifyPassword } from "@/lib/password";
 import { isLimited, recordFailure } from "@/lib/ratelimit";
+import { getAccountType, parseProjectProfile, type ProjectProfile } from "@/lib/onboarding";
+import { FieldError } from "@/lib/validate";
 
-export type Msg = { error?: string; ok?: string } | undefined;
+export type Msg = { error?: string; ok?: string; field?: string } | undefined;
 
 function totpFor(secretB32: string, username: string) {
   return new TOTP({ issuer: "Hustlers Labs", label: username, secret: Secret.fromBase32(secretB32), digits: 6, period: 30 });
@@ -85,4 +87,26 @@ export async function changePassword(_: Msg, form: FormData): Promise<Msg> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value ?? "";
   await q`DELETE FROM sessions WHERE user_id = ${s.userId} AND token_hash <> ${sha256(token)}`;
   return { ok: "Password updated. Other devices have been signed out." };
+}
+
+export async function updateProjectDetails(_: Msg, form: FormData): Promise<Msg> {
+  const s = await requireMember();
+  if ((await getAccountType(s.userId)) !== "project") return { error: "Only project accounts have project details." };
+  let p: ProjectProfile;
+  try {
+    p = parseProjectProfile(form);
+  } catch (e) {
+    if (e instanceof FieldError) return { error: e.message, field: e.field };
+    throw e;
+  }
+  await q`
+    UPDATE project_profiles SET
+      project_name = ${p.project_name}, website = ${p.website}, x_handle = ${p.x_handle}, category = ${p.category},
+      chains = ${p.chains}::text[], stage = ${p.stage}, token_contract = ${p.token_contract},
+      funding_stage = ${p.funding_stage}, backers = ${p.backers}, team_size = ${p.team_size},
+      budget_band = ${p.budget_band}, contact_name = ${p.contact_name}, contact_role = ${p.contact_role},
+      contact_email = ${p.contact_email}, contact_telegram = ${p.contact_telegram}, updated_at = now()
+    WHERE user_id = ${s.userId}`;
+  revalidatePath("/members/account");
+  return { ok: "Project details saved." };
 }

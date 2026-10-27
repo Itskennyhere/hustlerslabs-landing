@@ -1,0 +1,81 @@
+import "server-only";
+import { db } from "./db";
+import { SCHEMA_STATEMENTS } from "./schema.sql";
+
+// Additive-only migrations. Never drop or rename anything here:
+// preview deployments share the production database.
+const ONBOARDING_STATEMENTS = [
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type TEXT CHECK (account_type IN ('project','creator'))`,
+  `CREATE TABLE IF NOT EXISTS creator_profiles (
+    user_id         BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    display_name    TEXT NOT NULL,
+    bio             TEXT NOT NULL CHECK (char_length(bio) <= 100),
+    platforms       JSONB NOT NULL,
+    main_handle     TEXT NOT NULL,
+    main_platform   TEXT NOT NULL,
+    niches          TEXT[] NOT NULL,
+    audience_band   TEXT NOT NULL,
+    region          TEXT NOT NULL,
+    languages       TEXT NOT NULL,
+    collab_status   TEXT NOT NULL,
+    telegram        TEXT NOT NULL,
+    verified        BOOLEAN NOT NULL DEFAULT false,
+    verified_at     TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS project_profiles (
+    user_id           BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    project_name      TEXT NOT NULL,
+    website           TEXT NOT NULL,
+    x_handle          TEXT NOT NULL,
+    category          TEXT NOT NULL,
+    chains            TEXT[] NOT NULL,
+    stage             TEXT NOT NULL,
+    token_contract    TEXT,
+    funding_stage     TEXT NOT NULL,
+    backers           TEXT,
+    team_size         TEXT NOT NULL,
+    budget_band       TEXT NOT NULL,
+    contact_name      TEXT NOT NULL,
+    contact_role      TEXT NOT NULL,
+    contact_email     TEXT NOT NULL,
+    contact_telegram  TEXT NOT NULL,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS project_workspace (
+    user_id            BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    goals              TEXT[],
+    key_date           DATE,
+    key_date_note      TEXT,
+    blocker            TEXT,
+    success_90d        TEXT,
+    goals_done_at      TIMESTAMPTZ,
+    marketing_owner    TEXT,
+    channels           TEXT[],
+    x_followers_band   TEXT,
+    community_band     TEXT,
+    tried              TEXT[],
+    marketing_done_at  TIMESTAMPTZ,
+    wanted_tools       TEXT[],
+    payment_pref       TEXT,
+    buying_done_at     TIMESTAMPTZ,
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+];
+
+let pending: Promise<void> | null = null;
+
+/** Brings the schema up to date. Runs at most once per server instance. */
+export function ensureSchema(): Promise<void> {
+  pending ??= (async () => {
+    const sql = db();
+    // Base tables first (also idempotent), so a fresh database works before /setup has run.
+    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS]) await sql.unsafe(stmt);
+  })().catch((err) => {
+    pending = null; // let the next request retry
+    throw err;
+  });
+  return pending;
+}

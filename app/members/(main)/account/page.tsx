@@ -4,13 +4,15 @@ import { requireMember } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { cancelTotpSetup, startTotp } from "./actions";
-import { ConfirmTotpForm, DisableTotpForm, PasswordForm } from "./Forms";
+import { ConfirmTotpForm, DisableTotpForm, PasswordForm, ProjectDetailsForm } from "./Forms";
+import { getAccountType, getProjectProfile } from "@/lib/onboarding";
 
 export default async function AccountPage() {
   const s = await requireMember();
   const rows = await q<{ totp_secret_enc: string | null; totp_enabled: boolean }>`
     SELECT totp_secret_enc, totp_enabled FROM users WHERE id = ${s.userId}`;
   const { totp_secret_enc, totp_enabled } = rows[0];
+  const project = (await getAccountType(s.userId)) === "project" ? await getProjectProfile(s.userId) : null;
 
   let setup: { qr: string; secret: string } | null = null;
   if (!totp_enabled && totp_secret_enc) {
@@ -65,6 +67,14 @@ export default async function AccountPage() {
         <h2>Change password</h2>
         <PasswordForm />
       </div>
+
+      {project && (
+        <div className="section">
+          <h2>Project details</h2>
+          <p className="note" style={{ marginBottom: "1rem" }}>The answers you gave at sign-up. Keep them up to date.</p>
+          <ProjectDetailsForm values={project} />
+        </div>
+      )}
     </>
   );
 }

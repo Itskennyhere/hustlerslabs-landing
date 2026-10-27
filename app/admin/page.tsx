@@ -20,7 +20,16 @@ type MemberRow = {
   last_login_at: string | null;
   disabled_at: string | null;
   totp_enabled: boolean;
+  account_type: "project" | "creator" | null;
+  progress: number | null;
 };
+
+function typeLabel(m: MemberRow): string {
+  if (m.role === "admin") return "Admin";
+  if (m.account_type === "project") return "Project";
+  if (m.account_type === "creator") return "Creator";
+  return "Member";
+}
 
 const fmt = (d: string | null) =>
   d
@@ -48,8 +57,12 @@ export default async function AdminPage() {
       FROM invites i LEFT JOIN users u ON u.invite_id = i.id
       ORDER BY i.created_at DESC LIMIT 50`,
     q<MemberRow>`
-      SELECT id, username, role, created_at, last_login_at, disabled_at, totp_enabled
-      FROM users ORDER BY created_at DESC`,
+      SELECT u.id, u.username, u.role, u.created_at, u.last_login_at, u.disabled_at, u.totp_enabled, u.account_type,
+             CASE WHEN u.account_type = 'project' THEN
+               ((w.goals_done_at IS NOT NULL)::int + (w.marketing_done_at IS NOT NULL)::int + (w.buying_done_at IS NOT NULL)::int)
+             END AS progress
+      FROM users u LEFT JOIN project_workspace w ON w.user_id = u.id
+      ORDER BY u.created_at DESC`,
   ]);
 
   return (
@@ -125,7 +138,8 @@ export default async function AdminPage() {
             <thead>
               <tr>
                 <th>Username</th>
-                <th>Role</th>
+                <th>Type</th>
+                <th>Workspace</th>
                 <th>Status</th>
                 <th>2FA</th>
                 <th>Joined</th>
@@ -138,8 +152,12 @@ export default async function AdminPage() {
                 const self = Number(m.id) === admin.userId;
                 return (
                   <tr key={m.id}>
-                    <td className="mono">@{m.username}{self ? " (you)" : ""}</td>
-                    <td>{m.role === "admin" ? "Admin" : "Member"}</td>
+                    <td className="mono">
+                      <a href={`/admin/members/${m.id}`}>@{m.username}</a>
+                      {self ? " (you)" : ""}
+                    </td>
+                    <td>{typeLabel(m)}</td>
+                    <td className="mono">{m.account_type === "project" && m.role !== "admin" ? `${m.progress ?? 0}/3` : "-"}</td>
                     <td>
                       <span className={`pill ${m.disabled_at ? "off" : "on"}`}>{m.disabled_at ? "Disabled" : "Active"}</span>
                     </td>

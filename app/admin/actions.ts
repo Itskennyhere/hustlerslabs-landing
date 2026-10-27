@@ -48,6 +48,17 @@ export async function setMemberDisabled(form: FormData): Promise<void> {
   revalidatePath("/admin");
 }
 
+export async function setCreatorVerified(form: FormData): Promise<void> {
+  await requireAdmin();
+  const id = Number(form.get("id"));
+  const verify = form.get("verify") === "1";
+  if (!Number.isSafeInteger(id)) return;
+  await q`UPDATE creator_profiles SET verified = ${verify}, verified_at = ${verify ? new Date().toISOString() : null}, updated_at = now()
+          WHERE user_id = ${id}`;
+  revalidatePath(`/admin/members/${id}`);
+  revalidatePath("/admin/creators");
+}
+
 export async function signOutMember(form: FormData): Promise<void> {
   const admin = await requireAdmin();
   const id = Number(form.get("id"));

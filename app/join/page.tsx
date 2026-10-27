@@ -12,7 +12,7 @@ export default async function JoinPage() {
     <AuthShell>
       <div className="tag">Invite only</div>
       <h1>Create your account.</h1>
-      <p className="sub">Enter the invite key you were given, then choose your own username and password.</p>
+      <p className="sub">Tell us who you are, enter the invite key you were given, then choose your own username and password.</p>
       <JoinForm />
       <p className="alt">
         Already a member? <a href="/login">Sign in.</a>

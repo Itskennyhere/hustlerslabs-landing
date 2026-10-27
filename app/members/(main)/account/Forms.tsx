@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
-import { changePassword, confirmTotp, disableTotp, type Msg } from "./actions";
+import { startTransition, useActionState } from "react";
+import { changePassword, confirmTotp, disableTotp, updateProjectDetails, type Msg } from "./actions";
 import { SubmitButton } from "@/components/ui";
+import ProjectFields, { type ProjectValues } from "@/components/ProjectFields";
 
 function Feedback({ state }: { state: Msg }) {
-  if (state?.error) return <p className="error" role="alert">{state.error}</p>;
+  if (state?.error && !state.field) return <p className="error" role="alert">{state.error}</p>;
+  if (state?.error) return <p className="error">Check the highlighted field above.</p>;
   if (state?.ok) return <p className="note" role="status">{state.ok}</p>;
   return null;
 }
@@ -59,6 +61,26 @@ export function PasswordForm() {
       </label>
       <Feedback state={state} />
       <SubmitButton pending="Saving...">Update password</SubmitButton>
+    </form>
+  );
+}
+
+export function ProjectDetailsForm({ values }: { values: ProjectValues }) {
+  const [state, dispatch, pending] = useActionState(updateProjectDetails, undefined);
+  return (
+    <form
+      className="stack narrow"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        startTransition(() => dispatch(data));
+      }}
+    >
+      <ProjectFields values={values} err={state?.error ? state : undefined} />
+      <Feedback state={state} />
+      <button type="submit" className="btn" disabled={pending}>
+        {pending ? "Saving..." : "Save project details"}
+      </button>
     </form>
   );
 }
