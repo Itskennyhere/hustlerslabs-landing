@@ -65,6 +65,25 @@ const ONBOARDING_STATEMENTS = [
   )`,
 ];
 
+// Linked email and password reset by email.
+const EMAIL_STATEMENTS = [
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
+  // A confirmed email belongs to one account only.
+  `CREATE UNIQUE INDEX IF NOT EXISTS users_verified_email_idx ON users (lower(email)) WHERE email_verified_at IS NOT NULL`,
+  `CREATE TABLE IF NOT EXISTS email_tokens (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose     TEXT NOT NULL CHECK (purpose IN ('verify','reset')),
+    token_hash  TEXT NOT NULL UNIQUE,
+    email       TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at  TIMESTAMPTZ NOT NULL,
+    used_at     TIMESTAMPTZ
+  )`,
+  `CREATE INDEX IF NOT EXISTS email_tokens_user_idx ON email_tokens(user_id, purpose)`,
+];
+
 let pending: Promise<void> | null = null;
 
 /** Brings the schema up to date. Runs at most once per server instance. */
@@ -72,7 +91,7 @@ export function ensureSchema(): Promise<void> {
   pending ??= (async () => {
     const sql = db();
     // Base tables first (also idempotent), so a fresh database works before /setup has run.
-    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS]) await sql.unsafe(stmt);
+    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS]) await sql.unsafe(stmt);
   })().catch((err) => {
     pending = null; // let the next request retry
     throw err;

@@ -21,6 +21,7 @@ type MemberRow = {
   disabled_at: string | null;
   totp_enabled: boolean;
   account_type: "project" | "creator" | null;
+  email: string | null;
   progress: number | null;
 };
 
@@ -58,6 +59,7 @@ export default async function AdminPage() {
       ORDER BY i.created_at DESC LIMIT 50`,
     q<MemberRow>`
       SELECT u.id, u.username, u.role, u.created_at, u.last_login_at, u.disabled_at, u.totp_enabled, u.account_type,
+             CASE WHEN u.email_verified_at IS NOT NULL THEN u.email END AS email,
              CASE WHEN u.account_type = 'project' THEN
                ((w.goals_done_at IS NOT NULL)::int + (w.marketing_done_at IS NOT NULL)::int + (w.buying_done_at IS NOT NULL)::int)
              END AS progress
@@ -142,6 +144,7 @@ export default async function AdminPage() {
                 <th>Workspace</th>
                 <th>Status</th>
                 <th>2FA</th>
+                <th>Email</th>
                 <th>Joined</th>
                 <th>Last login</th>
                 <th></th>
@@ -162,6 +165,7 @@ export default async function AdminPage() {
                       <span className={`pill ${m.disabled_at ? "off" : "on"}`}>{m.disabled_at ? "Disabled" : "Active"}</span>
                     </td>
                     <td>{m.totp_enabled ? "On" : "Off"}</td>
+                    <td className="mono">{m.email ?? "-"}</td>
                     <td>{fmt(m.created_at)}</td>
                     <td>{fmt(m.last_login_at)}</td>
                     <td>

@@ -11,7 +11,8 @@ export class FieldError extends Error {
 
 export const LIMITS = { name: 80, bio: 100, text: 500, handle: 40 } as const;
 
-const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
+// Deliberately strict: plain addresses only, no comments, quotes or unicode tricks.
+export const EMAIL_RE = /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}$/;
 export const HANDLE_RE = /^[A-Za-z0-9_.]{1,40}$/;
 const EVM_RE = /^0x[a-fA-F0-9]{40}$/;
 const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;

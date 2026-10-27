@@ -9,7 +9,9 @@ import { decrypt, encrypt, sha256 } from "@/lib/crypto";
 import { hashPassword, validatePassword, verifyPassword } from "@/lib/password";
 import { isLimited, recordFailure } from "@/lib/ratelimit";
 import { getAccountType, parseProjectProfile, type ProjectProfile } from "@/lib/onboarding";
-import { FieldError } from "@/lib/validate";
+import { EMAIL_RE, FieldError } from "@/lib/validate";
+import { appUrl, mailConfigured, sendMail } from "@/lib/mail";
+import { createEmailToken } from "@/lib/email-tokens";
 
 export type Msg = { error?: string; ok?: string; field?: string } | undefined;
 
@@ -109,4 +111,42 @@ export async function updateProjectDetails(_: Msg, form: FormData): Promise<Msg>
     WHERE user_id = ${s.userId}`;
   revalidatePath("/members/account");
   return { ok: "Project details saved." };
+}
+
+export async function sendEmailLink(_: Msg, form: FormData): Promise<Msg> {
+  const s = await requireMember();
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  if (email.length > 254 || !EMAIL_RE.test(email)) return { error: "Enter a valid email address.", field: "email" };
+  if (!mailConfigured()) return { error: "Email sending is not set up yet. Ask Hustlers Labs to finish the email setup." };
+
+  const bucket = `email-link:${s.userId}`;
+  if (await isLimited(bucket, 5, 60)) return { error: "Too many emails sent. Try again in an hour." };
+
+  const rows = await q<{ email: string | null; email_verified_at: string | null }>`
+    SELECT email, email_verified_at FROM users WHERE id = ${s.userId}`;
+  if (rows[0]?.email_verified_at && rows[0].email === email) return { ok: "That email is already confirmed." };
+  const other = await q`SELECT 1 FROM users WHERE lower(email) = ${email} AND email_verified_at IS NOT NULL AND id <> ${s.userId}`;
+  if (other[0]) return { error: "That email is already linked to another account.", field: "email" };
+
+  await recordFailure(bucket); // counts sends, successful or not
+  const token = await createEmailToken(s.userId, "verify", email);
+  try {
+    await sendMail(
+      email,
+      "Confirm your email for Hustlers Labs",
+      `Hi @${s.username},\n\nConfirm this email to use it for password resets on Hustlers Labs:\n\n${appUrl(`/login/confirm-email?token=${token}`)}\n\nThe link works once and expires in 24 hours. If you did not ask for this, ignore this email.\n`,
+    );
+  } catch (e) {
+    console.error("email link send failed", e);
+    return { error: "Could not send the email. Try again in a few minutes." };
+  }
+  revalidatePath("/members/account");
+  return { ok: `Confirmation link sent to ${email}. It expires in 24 hours.` };
+}
+
+export async function removeEmail(): Promise<void> {
+  const s = await requireMember();
+  await q`UPDATE users SET email = NULL, email_verified_at = NULL WHERE id = ${s.userId}`;
+  await q`UPDATE email_tokens SET used_at = now() WHERE user_id = ${s.userId} AND used_at IS NULL`;
+  revalidatePath("/members/account");
 }

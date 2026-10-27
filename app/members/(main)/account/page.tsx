@@ -3,15 +3,20 @@ import { TOTP, Secret } from "otpauth";
 import { requireMember } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
-import { cancelTotpSetup, startTotp } from "./actions";
-import { ConfirmTotpForm, DisableTotpForm, PasswordForm, ProjectDetailsForm } from "./Forms";
+import { cancelTotpSetup, removeEmail, startTotp } from "./actions";
+import { ConfirmTotpForm, DisableTotpForm, EmailForm, PasswordForm, ProjectDetailsForm } from "./Forms";
 import { getAccountType, getProjectProfile } from "@/lib/onboarding";
 
 export default async function AccountPage() {
   const s = await requireMember();
-  const rows = await q<{ totp_secret_enc: string | null; totp_enabled: boolean }>`
-    SELECT totp_secret_enc, totp_enabled FROM users WHERE id = ${s.userId}`;
+  const rows = await q<{ totp_secret_enc: string | null; totp_enabled: boolean; email: string | null; email_verified_at: string | null }>`
+    SELECT totp_secret_enc, totp_enabled, email, email_verified_at FROM users WHERE id = ${s.userId}`;
   const { totp_secret_enc, totp_enabled } = rows[0];
+  const email = rows[0].email_verified_at ? rows[0].email : null;
+  const pending = await q<{ email: string }>`
+    SELECT email FROM email_tokens
+    WHERE user_id = ${s.userId} AND purpose = 'verify' AND used_at IS NULL AND expires_at > now()
+    ORDER BY created_at DESC LIMIT 1`;
   const project = (await getAccountType(s.userId)) === "project" ? await getProjectProfile(s.userId) : null;
 
   let setup: { qr: string; secret: string } | null = null;
@@ -60,6 +65,31 @@ export default async function AccountPage() {
               <button className="btn" type="submit">Set up two-step login</button>
             </form>
           </>
+        )}
+      </div>
+
+      <div className="section">
+        <h2>Email</h2>
+        <p className="note" style={{ marginBottom: "1rem" }}>
+          {email ? (
+            <>
+              Confirmed: <span className="mono">{email}</span>. If you forget your password, use &quot;Forgot password?&quot; on the
+              sign-in page and we will email you a reset link.
+            </>
+          ) : (
+            <>No email linked. Link one so you can reset your password if you forget it.</>
+          )}
+          {pending[0] && pending[0].email !== email && (
+            <>
+              {" "}Waiting for you to confirm <span className="mono">{pending[0].email}</span>. Check your inbox.
+            </>
+          )}
+        </p>
+        <EmailForm current={email} />
+        {email && (
+          <form action={removeEmail} style={{ marginTop: "0.75rem" }}>
+            <button className="btn ghost small" type="submit">Remove email</button>
+          </form>
         )}
       </div>
 

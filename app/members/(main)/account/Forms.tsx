@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useActionState } from "react";
-import { changePassword, confirmTotp, disableTotp, updateProjectDetails, type Msg } from "./actions";
+import { changePassword, confirmTotp, disableTotp, sendEmailLink, updateProjectDetails, type Msg } from "./actions";
 import { SubmitButton } from "@/components/ui";
 import ProjectFields, { type ProjectValues } from "@/components/ProjectFields";
 
@@ -81,6 +81,28 @@ export function ProjectDetailsForm({ values }: { values: ProjectValues }) {
       <button type="submit" className="btn" disabled={pending}>
         {pending ? "Saving..." : "Save project details"}
       </button>
+    </form>
+  );
+}
+
+export function EmailForm({ current }: { current: string | null }) {
+  const [state, action] = useActionState(sendEmailLink, undefined);
+  return (
+    <form action={action} className="stack" style={{ maxWidth: 400 }}>
+      <label>
+        {current ? "New email" : "Email"}
+        <input
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          maxLength={254}
+          aria-invalid={state?.field === "email" || undefined}
+        />
+      </label>
+      {state?.error && <p className="error" role="alert">{state.error}</p>}
+      {state?.ok && <p className="note" role="status">{state.ok}</p>}
+      <SubmitButton pending="Sending...">Send confirmation link</SubmitButton>
     </form>
   );
 }
