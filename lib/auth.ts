@@ -4,12 +4,16 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { q } from "./db";
 import { randomToken, sha256 } from "./crypto";
+import { ensureSchema } from "./migrate";
+import { requestInfo } from "./security";
 
 const PROD = process.env.NODE_ENV === "production";
 // __Host- prefix: cookie is Secure, host-only and path=/, so subdomains cannot set or read it.
 export const SESSION_COOKIE = PROD ? "__Host-hl_session" : "hl_session";
 
 const SESSION_DAYS = 7;
+// Admins can change everyone's access, so their sessions are short.
+const ADMIN_SESSION_HOURS = 12;
 const MFA_PENDING_MINUTES = 5;
 
 export type SessionUser = {
@@ -33,11 +37,14 @@ async function setCookie(token: string, expires: Date) {
 
 /** Starts a session. If the user has 2FA on, the session is "pending" until a code is verified. */
 export async function createSession(userId: number, mfaVerified: boolean): Promise<void> {
+  await ensureSchema();
   const token = randomToken(32);
-  const minutes = mfaVerified ? SESSION_DAYS * 24 * 60 : MFA_PENDING_MINUTES;
+  const role = (await q<{ role: string }>`SELECT role FROM users WHERE id = ${userId}`)[0]?.role;
+  const minutes = !mfaVerified ? MFA_PENDING_MINUTES : role === "admin" ? ADMIN_SESSION_HOURS * 60 : SESSION_DAYS * 24 * 60;
   const expires = new Date(Date.now() + minutes * 60_000);
-  await q`INSERT INTO sessions (token_hash, user_id, mfa_verified, expires_at)
-          VALUES (${sha256(token)}, ${userId}, ${mfaVerified}, ${expires.toISOString()})`;
+  const { ip, ua } = await requestInfo();
+  await q`INSERT INTO sessions (token_hash, user_id, mfa_verified, expires_at, ip, user_agent, last_seen_at)
+          VALUES (${sha256(token)}, ${userId}, ${mfaVerified}, ${expires.toISOString()}, ${ip}, ${ua}, now())`;
   await setCookie(token, expires);
 }
 
@@ -51,6 +58,7 @@ export async function completeMfa(sessionId: number, userId: number): Promise<vo
 export const getSession = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token || token.length > 100) return null;
+  await ensureSchema();
   const rows = await q<{
     session_id: number;
     user_id: number;
@@ -65,6 +73,9 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
     LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
+  // Keeps "last active" on the device list roughly current without a write on every request.
+  await q`UPDATE sessions SET last_seen_at = now()
+          WHERE id = ${r.session_id} AND (last_seen_at IS NULL OR last_seen_at < now() - interval '5 minutes')`;
   return {
     sessionId: Number(r.session_id),
     userId: Number(r.user_id),
@@ -85,6 +96,8 @@ export async function requireMember(): Promise<SessionUser> {
 export async function requireAdmin(): Promise<SessionUser> {
   const s = await requireMember();
   if (s.role !== "admin") redirect("/members");
+  // Admin pages need two-step login on.
+  if (!s.totpEnabled) redirect("/members/account?admin2fa=1");
   return s;
 }
 

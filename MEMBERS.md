@@ -67,11 +67,19 @@ Limits (max goals, max tools, platform rows) are in the same file. Field length 
 
 - Passwords hashed with Argon2id. Invite keys and session tokens stored only as SHA-256 hashes.
 - Invite keys: single use, expire (24h, 48h or 7 days), revocable. Burning the invite, creating the user and creating the profile happen in one transaction: if any part fails, nothing is written and the invite still works.
-- Sessions: random 256-bit token in a `__Host-` httpOnly, Secure, SameSite cookie. Checked against the database on every protected page and every action.
+- Sessions: random 256-bit token in a `__Host-` httpOnly, Secure, SameSite cookie. Checked against the database on every protected page and every action. Members stay signed in for 7 days, admins for 12 hours. Each session records its IP and browser for the device list.
 - Every member action reads and writes only the signed-in user's own rows. Ids are never taken from the form. Admin actions require the admin role.
 - All onboarding input is validated on the server against the option lists, with length limits, email, https and contract address checks.
 - Password reset by email: only to a confirmed email. The answer on `/login/forgot` is the same whether or not the account exists, and the email is sent after the response. Limited to 5 requests per IP per 15 minutes and 3 emails per account per hour. A reset signs out every device, emails a notice, and does not turn off two-step login.
-- Two-step login (authenticator app), required for the admin before invite keys can be generated. 2FA secrets encrypted at rest (AES-256-GCM).
+- Two-step login (authenticator app). **Required for admins**: an admin without it is sent to Account and cannot open `/admin` or turn it off. 2FA secrets encrypted at rest (AES-256-GCM).
+- Each 2FA code works once (`users.totp_last_step`), so a code seen over someone's shoulder or phished cannot be replayed.
+- Wrong 2FA codes are counted per account, not per sign-in: 5 per sign-in attempt, 10 per account per 15 minutes. Knowing the password does not give unlimited guesses.
+- Recovery codes: 10 one-time codes shown once when 2FA is turned on (only SHA-256 hashes stored, table `recovery_codes`). Usable on the code screen if the phone is lost. New codes can be made from Account.
+- Sensitive changes need the current password again: changing email, turning off 2FA, making new recovery codes, changing password. Turning off 2FA and new recovery codes also need a current code.
+- Signed-in devices on Account: browser, IP, sign-in and last active time. Sign out one device or all others. A member can only sign out their own sessions.
+- Security activity log (table `security_events`): sign-ins, password, 2FA, recovery code, email and device changes, with IP and browser. Members see their last 10 on Account; admins see the last 15 on each member's page.
+- Alert emails to the confirmed address: sign-in from a new device or network, recovery code used, password changed, 2FA on or off, new recovery codes. When the email changes, the **old** address is told.
+- New passwords are checked against Have I Been Pwned (k-anonymity: only the first 5 characters of a SHA-1 hash leave the server). Breached passwords are refused at sign-up, change, reset and setup. If the service is down, the check is skipped rather than blocking people.
 - Rate limits: 5 failed logins per username and 20 per IP per 15 minutes. Invite and 2FA attempts limited too.
 - Disabling a member signs them out instantly. Changing password signs out other devices.
 - Private pages: noindex, no-store, cannot be framed.
@@ -84,6 +92,7 @@ Limits (max goals, max tools, platform rows) are in the same file. Field length 
 - `SMTP_USER`: the Gmail address that sends email.
 - `SMTP_PASS`: a Google app password for that Gmail (Google Account > Security > 2-Step Verification > App passwords). Not the normal Gmail password.
 - `APP_URL` (optional): base for links in emails. Defaults to `https://www.hustlerslabs.com`.
+- `PWNED_API_BASE` (optional, tests only): overrides the breach check address.
 - `X_CLIENT_ID`, `X_CLIENT_SECRET`: for Connect X. Without them the Connect X panel is hidden.
 - `MAIL_FROM` (optional): sender shown on emails. Defaults to `Hustlers Labs <SMTP_USER>`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` (optional): only to use something other than Gmail.

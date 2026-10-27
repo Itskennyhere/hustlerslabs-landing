@@ -14,6 +14,9 @@ export default async function VerifyPage() {
       <div className="tag">Two-step check</div>
       <h1>Enter your code.</h1>
       <p className="sub">Open your authenticator app and enter the 6-digit code for Hustlers Labs.</p>
+      <p className="note" style={{ marginBottom: "1rem" }}>
+        Lost your phone? Enter one of the recovery codes you saved when you turned on two-step login. Each one works once.
+      </p>
       <VerifyForm />
     </AuthShell>
   );

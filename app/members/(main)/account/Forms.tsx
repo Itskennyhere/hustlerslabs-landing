@@ -1,7 +1,15 @@
 "use client";
 
-import { startTransition, useActionState } from "react";
-import { changePassword, confirmTotp, disableTotp, sendEmailLink, updateProjectDetails, type Msg } from "./actions";
+import { startTransition, useActionState, useState } from "react";
+import {
+  changePassword,
+  confirmTotp,
+  disableTotp,
+  regenerateRecoveryCodes,
+  sendEmailLink,
+  updateProjectDetails,
+  type Msg,
+} from "./actions";
 import { SubmitButton } from "@/components/ui";
 import ProjectFields, { type ProjectValues } from "@/components/ProjectFields";
 
@@ -21,8 +29,64 @@ function CodeInput() {
   );
 }
 
+function CurrentPassword() {
+  return (
+    <label>
+      Current password
+      <input name="current_password" type="password" autoComplete="current-password" required maxLength={256} />
+    </label>
+  );
+}
+
+function Plain({ state }: { state: Msg }) {
+  if (state?.error) return <p className="error" role="alert">{state.error}</p>;
+  if (state?.ok) return <p className="note" role="status">{state.ok}</p>;
+  return null;
+}
+
+/** Shown once, right after the codes are made. Only their hashes are stored. */
+export function RecoveryCodes({ codes, done }: { codes: string[]; done?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="codes-box" role="status">
+      <p className="codes-title">Save these recovery codes now</p>
+      <p className="note">
+        If you lose your phone, each code lets you sign in once. Keep them somewhere safe, like a password manager. You will
+        not see them again.
+      </p>
+      <ol className="codes mono">
+        {codes.map((c) => (
+          <li key={c}>{c}</li>
+        ))}
+      </ol>
+      <div className="row">
+        <button
+          type="button"
+          className="btn ghost small"
+          onClick={() => navigator.clipboard?.writeText(codes.join("\n")).then(() => setCopied(true), () => {})}
+        >
+          {copied ? "Copied" : "Copy codes"}
+        </button>
+        {done && (
+          <a className="btn small" href="/members/account">
+            I have saved them
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ConfirmTotpForm() {
   const [state, action] = useActionState(confirmTotp, undefined);
+  if (state?.codes) {
+    return (
+      <>
+        <p className="note" role="status" style={{ marginBottom: "1rem" }}>{state.ok}</p>
+        <RecoveryCodes codes={state.codes} done />
+      </>
+    );
+  }
   return (
     <form action={action} className="stack" style={{ maxWidth: 400 }}>
       <CodeInput />
@@ -36,10 +100,26 @@ export function DisableTotpForm() {
   const [state, action] = useActionState(disableTotp, undefined);
   return (
     <form action={action} className="stack" style={{ maxWidth: 400 }}>
+      <CurrentPassword />
       <CodeInput />
-      <Feedback state={state} />
+      <Plain state={state} />
       <SubmitButton className="btn danger" pending="Checking...">Turn off two-step login</SubmitButton>
     </form>
+  );
+}
+
+export function RecoveryCodesForm() {
+  const [state, action] = useActionState(regenerateRecoveryCodes, undefined);
+  return (
+    <>
+      {state?.codes && <RecoveryCodes codes={state.codes} />}
+      <form action={action} className="stack" style={{ maxWidth: 400 }}>
+        <CurrentPassword />
+        <CodeInput />
+        <Plain state={state} />
+        <SubmitButton className="btn ghost" pending="Making codes...">Make new recovery codes</SubmitButton>
+      </form>
+    </>
   );
 }
 
@@ -100,6 +180,7 @@ export function EmailForm({ current }: { current: string | null }) {
           aria-invalid={state?.field === "email" || undefined}
         />
       </label>
+      <CurrentPassword />
       {state?.error && <p className="error" role="alert">{state.error}</p>}
       {state?.ok && <p className="note" role="status">{state.ok}</p>}
       <SubmitButton pending="Sending...">Send confirmation link</SubmitButton>

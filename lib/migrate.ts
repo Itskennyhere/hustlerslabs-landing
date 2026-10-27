@@ -92,6 +92,31 @@ const EMAIL_STATEMENTS = [
   )`,
 ];
 
+// Account security: 2FA replay guard, recovery codes, device list and activity log.
+const SECURITY_STATEMENTS = [
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_last_step BIGINT`,
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip TEXT`,
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_agent TEXT`,
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ`,
+  `CREATE TABLE IF NOT EXISTS recovery_codes (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash   TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    used_at     TIMESTAMPTZ
+  )`,
+  `CREATE INDEX IF NOT EXISTS recovery_codes_user_idx ON recovery_codes(user_id)`,
+  `CREATE TABLE IF NOT EXISTS security_events (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind        TEXT NOT NULL,
+    ip          TEXT,
+    user_agent  TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS security_events_user_idx ON security_events(user_id, created_at DESC)`,
+];
+
 let pending: Promise<void> | null = null;
 
 /** Brings the schema up to date. Runs at most once per server instance. */
@@ -99,7 +124,7 @@ export function ensureSchema(): Promise<void> {
   pending ??= (async () => {
     const sql = db();
     // Base tables first (also idempotent), so a fresh database works before /setup has run.
-    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS]) await sql.unsafe(stmt);
+    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS, ...SECURITY_STATEMENTS]) await sql.unsafe(stmt);
   })().catch((err) => {
     pending = null; // let the next request retry
     throw err;

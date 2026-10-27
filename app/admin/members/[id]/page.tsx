@@ -23,6 +23,7 @@ import CreatorCard from "@/components/CreatorCard";
 import { ProgressBar } from "@/components/WorkspaceChecklist";
 import { setCreatorVerified } from "../../actions";
 import { getXAccount } from "@/lib/x-oauth";
+import { EVENT_LABELS, describeDevice, recentEvents } from "@/lib/security";
 
 type UserRow = { id: number; username: string; role: string; account_type: string | null; created_at: string; disabled_at: string | null };
 
@@ -64,7 +65,41 @@ export default async function AdminMemberPage({ params }: { params: Promise<{ id
       </p>
       {u.account_type === "project" && <ProjectDetail id={id} />}
       {u.account_type === "creator" && <CreatorDetail id={id} />}
+      <SecurityActivity id={id} />
     </>
+  );
+}
+
+async function SecurityActivity({ id }: { id: number }) {
+  const [events, sessions] = await Promise.all([
+    recentEvents(id, 15),
+    q<{ n: number; totp: boolean }>`
+      SELECT (SELECT count(*)::int FROM sessions WHERE user_id = ${id} AND mfa_verified AND expires_at > now()) AS n,
+             (SELECT totp_enabled FROM users WHERE id = ${id}) AS totp`,
+  ]);
+  return (
+    <div className="section">
+      <h2>Security</h2>
+      <Answers
+        rows={[
+          ["Two-step login", sessions[0]?.totp ? "On" : "Off"],
+          ["Signed-in devices", String(sessions[0]?.n ?? 0)],
+        ]}
+      />
+      <ul className="devices">
+        {events.map((e, i) => (
+          <li key={i}>
+            <div>
+              <strong>{EVENT_LABELS[e.kind] ?? e.kind}</strong>
+              <div className="note">
+                {fmt(e.created_at)} · {describeDevice(e.user_agent)} · <span className="mono">{e.ip ?? "IP unknown"}</span>
+              </div>
+            </div>
+          </li>
+        ))}
+        {events.length === 0 && <li className="note">No activity recorded yet.</li>}
+      </ul>
+    </div>
   );
 }
 

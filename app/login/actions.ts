@@ -1,12 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { TOTP, Secret } from "otpauth";
 import { q } from "@/lib/db";
 import { burnPasswordCheck, verifyPassword } from "@/lib/password";
 import { clientIp, clearFailures, isLimited, recordFailure } from "@/lib/ratelimit";
 import { completeMfa, createSession, destroySession, getSession } from "@/lib/auth";
-import { decrypt } from "@/lib/crypto";
+import { checkTotp, logEvent, useRecoveryCode } from "@/lib/security";
 
 export type FormState = { error?: string } | undefined;
 
@@ -42,6 +41,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   await clearFailures(userBucket);
   await q`UPDATE users SET last_login_at = now() WHERE id = ${user.id}`;
   await createSession(Number(user.id), !user.totp_enabled);
+  if (!user.totp_enabled) await logEvent(Number(user.id), "login");
   redirect(user.totp_enabled ? "/login/verify" : "/members");
 }
 
@@ -50,24 +50,36 @@ export async function verifyTotp(_: FormState, form: FormData): Promise<FormStat
   if (!s) redirect("/login");
   if (s.mfaVerified) redirect("/members");
 
-  const code = String(form.get("code") ?? "").replace(/\s/g, "");
+  const input = String(form.get("code") ?? "").trim().slice(0, 32);
+  const code = input.replace(/\s/g, "");
   const attempts = await q<{ mfa_attempts: number }>`
     UPDATE sessions SET mfa_attempts = mfa_attempts + 1 WHERE id = ${s.sessionId} RETURNING mfa_attempts`;
-  if ((attempts[0]?.mfa_attempts ?? 99) > 5) {
+  // Per account as well as per session: signing in again with the password does not reset the count.
+  const userBucket = `totp-user:${s.userId}`;
+  if ((attempts[0]?.mfa_attempts ?? 99) > 5 || (await isLimited(userBucket, 10))) {
     await destroySession();
-    redirect("/login");
+    redirect("/login?locked=1");
   }
 
   const rows = await q<{ totp_secret_enc: string | null }>`SELECT totp_secret_enc FROM users WHERE id = ${s.userId}`;
   const enc = rows[0]?.totp_secret_enc;
-  if (!enc || !/^\d{6}$/.test(code)) return { error: "Enter the 6-digit code from your authenticator app." };
+  if (!enc) return { error: "Two-step login is not set up for this account." };
 
-  const totp = new TOTP({ secret: Secret.fromBase32(decrypt(enc)), digits: 6, period: 30 });
-  if (totp.validate({ token: code, window: 1 }) === null) {
-    return { error: "That code did not match. Try the newest code." };
+  if (/^\d{6}$/.test(code)) {
+    if (!(await checkTotp(s.userId, enc, code))) {
+      await recordFailure(userBucket);
+      return { error: "That code did not match, or was already used. Wait for the next code." };
+    }
+    await completeMfa(s.sessionId, s.userId);
+    await logEvent(s.userId, "login");
+  } else {
+    if (!(await useRecoveryCode(s.userId, code))) {
+      await recordFailure(userBucket);
+      return { error: "Enter the 6-digit code from your app, or one of your recovery codes." };
+    }
+    await completeMfa(s.sessionId, s.userId);
+    await logEvent(s.userId, "login_recovery");
   }
-
-  await completeMfa(s.sessionId, s.userId);
   redirect("/members");
 }
 

@@ -7,7 +7,8 @@ import { sha256 } from "@/lib/crypto";
 import { ensureSchema } from "@/lib/migrate";
 import { appUrl, mailConfigured, sendMail } from "@/lib/mail";
 import { TOKEN_MINUTES, createEmailToken, peekEmailToken } from "@/lib/email-tokens";
-import { hashPassword, validatePassword } from "@/lib/password";
+import { hashPassword } from "@/lib/password";
+import { checkNewPassword, logEvent } from "@/lib/security";
 import { clearFailures, clientIp, isLimited, recordFailure } from "@/lib/ratelimit";
 
 export type EmailFormState = { error?: string; ok?: string } | undefined;
@@ -65,7 +66,7 @@ export async function resetPassword(_: EmailFormState, form: FormData): Promise<
   if (!t) return { error: "This reset link is invalid, used or expired. Ask for a new one." };
 
   const password = String(form.get("password") ?? "");
-  const err = validatePassword(password, t.username);
+  const err = await checkNewPassword(password, t.username);
   if (err) return { error: err };
   if (password !== String(form.get("confirm") ?? "")) return { error: "Passwords do not match." };
   const hash = await hashPassword(password);
@@ -84,6 +85,7 @@ export async function resetPassword(_: EmailFormState, form: FormData): Promise<
   if (!ok) return { error: "This reset link is invalid, used or expired. Ask for a new one." };
 
   await clearFailures(`login-user:${t.username}`);
+  await logEvent(Number(t.user_id), "password_reset");
   after(async () => {
     try {
       await sendMail(
@@ -106,6 +108,9 @@ export async function confirmEmail(_: EmailFormState, form: FormData): Promise<E
   const t = await peekEmailToken(token, "verify");
   if (!t) return { error: "This link is invalid, used or expired. Send a new one from Account." };
 
+  const before = await q<{ email: string | null; email_verified_at: string | null }>`
+    SELECT email, email_verified_at FROM users WHERE id = ${t.user_id}`;
+  const oldEmail = before[0]?.email_verified_at ? before[0].email : null;
   try {
     const ok = await db().begin(async (sql) => {
       const used = await sql`
@@ -117,6 +122,9 @@ export async function confirmEmail(_: EmailFormState, form: FormData): Promise<E
       return true;
     });
     if (!ok) return { error: "This link is invalid, used or expired. Send a new one from Account." };
+    if (oldEmail && oldEmail.toLowerCase() !== t.email.toLowerCase()) {
+      await logEvent(Number(t.user_id), "email_changed", { alertTo: oldEmail });
+    }
   } catch (e) {
     if ((e as { code?: string }).code === "23505") return { error: "That email is already linked to another account." };
     throw e;

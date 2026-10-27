@@ -9,14 +9,14 @@ export default function VerifyForm() {
   return (
     <form action={action} className="stack">
       <label>
-        6-digit code
+        Code
         <input
           name="code"
           className="mono"
-          inputMode="numeric"
           autoComplete="one-time-code"
-          pattern="[0-9 ]{6,7}"
-          maxLength={7}
+          autoCapitalize="characters"
+          spellCheck={false}
+          maxLength={14}
           required
           autoFocus
         />

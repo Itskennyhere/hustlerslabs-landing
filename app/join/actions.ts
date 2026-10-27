@@ -4,7 +4,8 @@ import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { db, q } from "@/lib/db";
 import { normalizeInviteKey, sha256 } from "@/lib/crypto";
-import { hashPassword, validatePassword, validateUsername } from "@/lib/password";
+import { hashPassword, validateUsername } from "@/lib/password";
+import { checkNewPassword, logEvent } from "@/lib/security";
 import { clientIp, isLimited, recordFailure } from "@/lib/ratelimit";
 import { createSession } from "@/lib/auth";
 import { ensureSchema } from "@/lib/migrate";
@@ -42,7 +43,7 @@ export async function join(_: JoinState, form: FormData): Promise<JoinState> {
     return { error: "That invite key is not valid.", field: "invite" };
   }
   if (!u.ok) return { error: u.error, field: "username" };
-  const pwErr = validatePassword(password, u.value);
+  const pwErr = await checkNewPassword(password, u.value);
   if (pwErr) return { error: pwErr, field: "password" };
   if (password !== confirm) return { error: "Passwords do not match.", field: "confirm" };
   const email = String(form.get("email") ?? "").trim().toLowerCase();
@@ -125,5 +126,6 @@ export async function join(_: JoinState, form: FormData): Promise<JoinState> {
   });
 
   await createSession(userId, true);
+  await logEvent(userId, "account_created");
   redirect(accountType === "creator" ? "/members/profile" : "/members");
 }
