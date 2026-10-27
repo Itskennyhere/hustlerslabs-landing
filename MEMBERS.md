@@ -15,7 +15,9 @@ The admin account has no type.
 
 | Path | Who | What |
 | --- | --- | --- |
-| `/login` | Anyone | Sign in |
+| `/login` | Anyone | Sign in with email and password. The username still works for an account with no confirmed email yet |
+| `/login/verify` | Signing in | Authenticator app code (or a recovery code) |
+| `/login/email-code` | Admins signing in | A 6-digit code emailed to the admin's confirmed email, after the app code. Expires in 10 minutes, works once, "Send a new code" up to 3 times |
 | `/login/forgot` | Anyone | Forgot password: emails a reset link to the account's confirmed email |
 | `/login/reset` | Anyone with a reset link | Choose a new password (link works once, 30 minutes) |
 | `/login/confirm-email` | Anyone with a confirm link | Confirms the email linked in Account (link works once, 24 hours) |
@@ -75,6 +77,9 @@ Limits (max goals, max tools, platform rows, intro note length, intros per day) 
 - Every member action reads and writes only the signed-in user's own rows. Ids are never taken from the form. Admin actions require the admin role.
 - All onboarding input is validated on the server against the option lists, with length limits, email, https and contract address checks.
 - Password reset by email: only to a confirmed email. The answer on `/login/forgot` is the same whether or not the account exists, and the email is sent after the response. Limited to 5 requests per IP per 15 minutes and 3 emails per account per hour. A reset signs out every device, emails a notice, and does not turn off two-step login.
+- **Sign-in steps.** Members: email and password, then the app code if they turned it on. Admins: email and password, then the app code, then a code sent to their confirmed email, every time. A pending sign-in opens nothing until every step is done, and lasts 15 minutes.
+- **Admin email code**: 6 digits, stored only as a keyed hash on the pending session, expires in 10 minutes, works once. Sending a new code cancels the old one; at most 4 per sign-in. 5 wrong codes end the sign-in, and 10 per account per 15 minutes lock it. The email names the device and IP.
+- **Admin pages need a confirmed email** as well as two-step login. An admin without one is sent to Account to confirm it (only when email sending is set up, so a missing SMTP setting can never lock the admin out).
 - Two-step login (authenticator app). **Required for admins**: an admin without it is sent to Account and cannot open `/admin` or turn it off. 2FA secrets encrypted at rest (AES-256-GCM).
 - Each 2FA code works once (`users.totp_last_step`), so a code seen over someone's shoulder or phished cannot be replayed.
 - Wrong 2FA codes are counted per account, not per sign-in: 5 per sign-in attempt, 10 per account per 15 minutes. Knowing the password does not give unlimited guesses.

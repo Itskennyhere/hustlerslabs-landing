@@ -9,6 +9,7 @@ export default async function VerifyPage() {
   const s = await getSession();
   if (!s) redirect("/login");
   if (s.mfaVerified) redirect("/members");
+  if (s.stage === "email") redirect("/login/email-code");
   return (
     <AuthShell>
       <div className="tag">Two-step check</div>

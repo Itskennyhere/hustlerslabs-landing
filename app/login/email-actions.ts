@@ -85,6 +85,7 @@ export async function resetPassword(_: EmailFormState, form: FormData): Promise<
   if (!ok) return { error: "This reset link is invalid, used or expired. Ask for a new one." };
 
   await clearFailures(`login-user:${t.username}`);
+  await clearFailures(`login-user:${t.email.toLowerCase()}`);
   await logEvent(Number(t.user_id), "password_reset");
   after(async () => {
     try {

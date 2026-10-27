@@ -11,7 +11,7 @@ import { getAccountType, getProjectProfile } from "@/lib/onboarding";
 const fmt = (d: string | Date) =>
   new Date(d).toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-export default async function AccountPage({ searchParams }: { searchParams: Promise<{ admin2fa?: string }> }) {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<{ admin2fa?: string; adminemail?: string }> }) {
   const s = await requireMember();
   const rows = await q<{ totp_secret_enc: string | null; totp_enabled: boolean; email: string | null; email_verified_at: string | null }>`
     SELECT totp_secret_enc, totp_enabled, email, email_verified_at FROM users WHERE id = ${s.userId}`;
@@ -45,6 +45,11 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       <h1>Security.</h1>
       <p className="sub">Signed in as <span className="mono">@{s.username}</span>.</p>
 
+      {(await searchParams).adminemail === "1" && !email && (
+        <p className="error" role="alert" style={{ marginTop: "1.5rem" }}>
+          Admin pages need a confirmed email. Every admin sign-in sends a code to it. Confirm one below to continue.
+        </p>
+      )}
       {(await searchParams).admin2fa === "1" && !totp_enabled && (
         <p className="error" role="alert" style={{ marginTop: "1.5rem" }}>
           Admin pages need two-step login. Turn it on below to continue.
@@ -139,8 +144,9 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         <p className="note" style={{ marginBottom: "1rem" }}>
           {email ? (
             <>
-              Confirmed: <span className="mono">{email}</span>. We email you here about new sign-ins and security changes, and
-              send password reset links here.
+              Confirmed: <span className="mono">{email}</span>. Sign in with this email. We email you here about new sign-ins
+              and security changes, and send password reset links here.
+              {s.role === "admin" && " As an admin, every sign-in also needs a code we send here."}
             </>
           ) : (
             <>No confirmed email yet. Confirm one so you get security alerts and can reset your password if you forget it.</>

@@ -9,8 +9,18 @@ export default function LoginForm() {
   return (
     <form action={action} className="stack">
       <label>
-        Username
-        <input name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={64} />
+        Email
+        <input
+          name="username"
+          autoComplete="username"
+          inputMode="email"
+          autoCapitalize="none"
+          spellCheck={false}
+          required
+          maxLength={254}
+          placeholder="you@example.com"
+        />
+        <span className="field-note">No confirmed email yet? Use your username.</span>
       </label>
       <label>
         Password

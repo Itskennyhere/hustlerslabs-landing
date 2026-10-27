@@ -98,6 +98,11 @@ const SECURITY_STATEMENTS = [
   `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip TEXT`,
   `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_agent TEXT`,
   `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ`,
+  // Which sign-in step a pending session is on ('totp' or 'email'), and the admin email code.
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS stage TEXT`,
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS email_code_hash TEXT`,
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS email_code_expires_at TIMESTAMPTZ`,
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS email_code_sends INT NOT NULL DEFAULT 0`,
   `CREATE TABLE IF NOT EXISTS recovery_codes (
     id          BIGSERIAL PRIMARY KEY,
     user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
