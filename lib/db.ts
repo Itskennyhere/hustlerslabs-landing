@@ -7,7 +7,12 @@ const globalForDb = globalThis as unknown as { __hlSql?: postgres.Sql };
 
 export function db(): postgres.Sql {
   if (!globalForDb.__hlSql) {
-    const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+    // The Vercel Neon integration may add its variables with a store prefix.
+    const url =
+      process.env.DATABASE_URL ??
+      process.env.POSTGRES_URL ??
+      process.env.hustlerslabs_members_DATABASE_URL ??
+      process.env.hustlerslabs_members_POSTGRES_URL;
     if (!url) throw new Error("DATABASE_URL (or POSTGRES_URL) is not set");
     globalForDb.__hlSql = postgres(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 10 });
   }
