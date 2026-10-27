@@ -6,7 +6,7 @@ import { TextField } from "@/components/fields";
 import ProjectFields, { PROJECT_FIELD_NAMES, type ProjectValues } from "@/components/ProjectFields";
 
 type Type = "project" | "creator" | "";
-const ACCOUNT_FIELDS = ["invite", "username", "password", "confirm"];
+const ACCOUNT_FIELDS = ["invite", "username", "email", "password", "confirm"];
 
 function stepForField(field: string | undefined): number | null {
   if (!field) return null;
@@ -111,6 +111,18 @@ export default function JoinForm() {
             note="3 to 24 characters. Letters, numbers, underscores."
             defaultValue={account.username}
             onChange={setA("username")}
+            err={err}
+          />
+          <TextField
+            name="email"
+            label="Email"
+            type="email"
+            required
+            max={254}
+            autoComplete="email"
+            note="Used to reset your password. We will send a link to confirm it."
+            defaultValue={account.email}
+            onChange={setA("email")}
             err={err}
           />
           <TextField

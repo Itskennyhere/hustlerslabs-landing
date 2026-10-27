@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { ensureSchema } from "@/lib/migrate";
+import { getEmailStatus } from "@/lib/email-confirm";
 import Shell from "@/components/Shell";
 import NavLinks from "@/components/NavLinks";
 
@@ -9,7 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   await ensureSchema();
   const user = await requireAdmin();
   return (
-    <Shell user={user}>
+    <Shell user={user} email={await getEmailStatus(user.userId)}>
       <nav className="subnav" aria-label="Admin">
         <NavLinks
           links={[

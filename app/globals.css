@@ -166,6 +166,7 @@ fieldset.group legend {
   border: 1px solid var(--line); font-family: 'DM Mono', monospace; font-size: 11px; text-decoration: none; color: var(--ink);
 }
 .ccard-platforms a:hover { border-color: var(--ink); }
+.ccard-platforms a.connected { background: var(--ink); border-color: var(--ink); color: #fff; }
 .ccard-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tagchip { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.04em; padding: 2px 8px; background: var(--soft); border: 1px solid var(--line); }
 .ccard-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border-top: 1px solid var(--line); padding-top: 0.75rem; }
@@ -182,7 +183,18 @@ fieldset.group legend {
 .card-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .admin-under { display: flex; justify-content: space-between; gap: 1rem; }
 
+/* Reminder banner under the members nav */
+.banner {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: 0.75rem 3rem; border-bottom: 1px solid var(--line); background: var(--soft); font-size: 13px;
+}
+.banner a { white-space: nowrap; }
+@media (max-width: 720px) { .banner { padding: 0.75rem 1rem; } }
+
 /* Panels and checklist */
+.x-connect { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.x-connect h2 { margin-bottom: 0.25rem; }
+.x-connect > div { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 0.5rem; }
 .panel { border: 1px solid var(--line); padding: 1.5rem; }
 .panel.locked { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-top: 1.5rem; }
 .panel.locked .progress-line { width: 100%; }

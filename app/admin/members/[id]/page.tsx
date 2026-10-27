@@ -22,6 +22,7 @@ import {
 import CreatorCard from "@/components/CreatorCard";
 import { ProgressBar } from "@/components/WorkspaceChecklist";
 import { setCreatorVerified } from "../../actions";
+import { getXAccount } from "@/lib/x-oauth";
 
 type UserRow = { id: number; username: string; role: string; account_type: string | null; created_at: string; disabled_at: string | null };
 
@@ -132,7 +133,7 @@ async function ProjectDetail({ id }: { id: number }) {
 }
 
 async function CreatorDetail({ id }: { id: number }) {
-  const c = await getCreatorProfile(id);
+  const [c, x] = await Promise.all([getCreatorProfile(id), getXAccount(id)]);
   if (!c) {
     return (
       <div className="section">
@@ -144,10 +145,11 @@ async function CreatorDetail({ id }: { id: number }) {
     <div className="section">
       <h2>Creator card</h2>
       <div className="card-solo">
-        <CreatorCard c={c} />
+        <CreatorCard c={c} xConnected={x?.username ?? null} />
         <Answers
           rows={[
             ["Telegram (admin only)", <span key="tg" className="mono">@{c.telegram}</span>],
+            ["X connected", x ? `@${x.username}${x.followers !== null ? `, ${x.followers.toLocaleString("en-US")} followers` : ""}` : "No"],
             ["Languages", c.languages],
             ["Verified", c.verified ? `Yes, ${fmt(c.verified_at)}` : "No"],
           ]}

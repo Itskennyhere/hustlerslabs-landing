@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { db, q } from "@/lib/db";
 import { normalizeInviteKey, sha256 } from "@/lib/crypto";
@@ -8,7 +9,9 @@ import { clientIp, isLimited, recordFailure } from "@/lib/ratelimit";
 import { createSession } from "@/lib/auth";
 import { ensureSchema } from "@/lib/migrate";
 import { parseAccountType, parseProjectProfile, type AccountType, type ProjectProfile } from "@/lib/onboarding";
-import { FieldError } from "@/lib/validate";
+import { EMAIL_RE, FieldError } from "@/lib/validate";
+import { emailTakenByOther, sendConfirmEmail } from "@/lib/email-confirm";
+import { createEmailToken } from "@/lib/email-tokens";
 
 export type JoinState = { error?: string; field?: string } | undefined;
 
@@ -42,6 +45,8 @@ export async function join(_: JoinState, form: FormData): Promise<JoinState> {
   const pwErr = validatePassword(password, u.value);
   if (pwErr) return { error: pwErr, field: "password" };
   if (password !== confirm) return { error: "Passwords do not match.", field: "confirm" };
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  if (email.length > 254 || !EMAIL_RE.test(email)) return { error: "Enter a valid email address.", field: "email" };
 
   if (accountType === "project") {
     try {
@@ -64,6 +69,7 @@ export async function join(_: JoinState, form: FormData): Promise<JoinState> {
   }
   const taken = await q`SELECT 1 FROM users WHERE username = ${u.value}`;
   if (taken[0]) return { error: "That username is taken. Pick another.", field: "username" };
+  if (await emailTakenByOther(email, null)) return { error: "That email is already linked to another account.", field: "email" };
 
   const passwordHash = await hashPassword(password);
 
@@ -106,6 +112,17 @@ export async function join(_: JoinState, form: FormData): Promise<JoinState> {
     console.error("join failed", e);
     return { error: "Something went wrong. Nothing was saved and your invite key still works. Try again." };
   }
+
+  // Saved now so the members area can show it as waiting; the email goes out after the response
+  // and can be re-sent from Account.
+  const confirmToken = await createEmailToken(userId, "verify", email);
+  after(async () => {
+    try {
+      await sendConfirmEmail(u.value, email, confirmToken);
+    } catch (e) {
+      console.error("join confirm email failed", e);
+    }
+  });
 
   await createSession(userId, true);
   redirect(accountType === "creator" ? "/members/profile" : "/members");

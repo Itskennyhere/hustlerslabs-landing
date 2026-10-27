@@ -19,9 +19,10 @@ The admin account has no type.
 | `/login/forgot` | Anyone | Forgot password: emails a reset link to the account's confirmed email |
 | `/login/reset` | Anyone with a reset link | Choose a new password (link works once, 30 minutes) |
 | `/login/confirm-email` | Anyone with a confirm link | Confirms the email linked in Account (link works once, 24 hours) |
-| `/join` | Anyone with an invite key | Multi-step sign-up: account type, invite key and login, project details (projects only) |
+| `/join` | Anyone with an invite key | Multi-step sign-up: account type, invite key, username, email and password, project details (projects only). Email is required and a confirm link is sent |
 | `/members` | Members | Home. Creators see their card. Projects see the workspace checklist |
-| `/members/profile` | Creators | Set up or edit the creator card. Creators without a card are sent here from every other `/members` page |
+| `/members/profile` | Creators | Set up or edit the creator card, and Connect X. Creators without a card are sent here from every other `/members` page |
+| `/members/profile/x/start`, `/members/profile/x/callback` | Creators | Connect X (X login). Only reads the X id, username and follower count, then revokes the X token |
 | `/members/workspace` | Projects | Workspace checklist and progress (0/3 to 3/3) |
 | `/members/workspace/goals`, `/marketing`, `/buying` | Projects | One section each, saved separately, editable later |
 | `/members/tools` | Members | Tools. Locked for projects until the workspace is 3/3 |
@@ -33,6 +34,8 @@ The admin account has no type.
 | `/setup` | Once | Creates the admin account, then returns 404 forever |
 
 The public landing page and blog in `public/` are served exactly as before.
+
+Until a member confirms their email, a banner under the nav (members area and admin) reminds them, with a link to Account to resend or change it.
 
 Every page under `/members` except `/members/profile` lives in the `app/members/(main)/` route group. The group's layout is what redirects creators without a card. Route groups do not change URLs.
 
@@ -46,6 +49,7 @@ Tables: `invites`, `users`, `sessions`, `auth_attempts` (from `/setup`), plus:
 - `project_workspace`: workspace answers, one row per project. Each section sets its own `*_done_at` when first saved.
 - `users.email`, `users.email_verified_at`: the linked email. Only a confirmed email is used, and a confirmed email belongs to one account.
 - `email_tokens`: single-use confirm and reset links. Only the SHA-256 of each token is stored.
+- `x_accounts`: the X account a creator connected (X user id, username, followers). One X account per member. No X tokens are stored. The card marks that X link as connected and uses it for the photo.
 
 `lib/migrate.ts` (`ensureSchema()`) creates and updates these. It is additive only (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`), runs at most once per server instance, and is called from the `/join` action and the `/members` and `/admin` layouts. Preview deployments share the production database, so never drop or rename anything there; add new columns instead.
 
@@ -80,10 +84,23 @@ Limits (max goals, max tools, platform rows) are in the same file. Field length 
 - `SMTP_USER`: the Gmail address that sends email.
 - `SMTP_PASS`: a Google app password for that Gmail (Google Account > Security > 2-Step Verification > App passwords). Not the normal Gmail password.
 - `APP_URL` (optional): base for links in emails. Defaults to `https://www.hustlerslabs.com`.
+- `X_CLIENT_ID`, `X_CLIENT_SECRET`: for Connect X. Without them the Connect X panel is hidden.
 - `MAIL_FROM` (optional): sender shown on emails. Defaults to `Hustlers Labs <SMTP_USER>`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` (optional): only to use something other than Gmail.
 
 Without `SMTP_USER` and `SMTP_PASS`, linking an email and password reset show a "not set up yet" message.
+
+## Setting up Connect X
+
+1. Go to https://developer.x.com, sign in, and create a Project and an App (the free tier is enough).
+2. In the App, open **User authentication settings** and click Set up:
+   - App permissions: **Read**.
+   - Type of App: **Web App, Automated App or Bot** (a confidential client).
+   - Callback URI: `https://www.hustlerslabs.com/members/profile/x/callback`.
+   - Website URL: `https://www.hustlerslabs.com`.
+3. Copy the **OAuth 2.0 Client ID and Client Secret** (not the API key and secret) into Vercel as `X_CLIENT_ID` and `X_CLIENT_SECRET`.
+
+Links in emails and the X callback use `APP_URL` (default `https://www.hustlerslabs.com`), so on a preview deployment Connect X returns to the live site.
 
 ## Adding a tool later
 

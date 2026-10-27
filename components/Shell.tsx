@@ -1,16 +1,19 @@
 import { logout } from "@/app/login/actions";
 import type { SessionUser } from "@/lib/auth";
 import type { AccountType } from "@/lib/onboarding";
+import type { EmailStatus } from "@/lib/email-confirm";
 import { Logo } from "./ui";
 import NavLinks from "./NavLinks";
 
 export default function Shell({
   user,
   accountType = null,
+  email = null,
   children,
 }: {
   user: SessionUser;
   accountType?: AccountType | null;
+  email?: EmailStatus | null;
   children: React.ReactNode;
 }) {
   const links = [
@@ -33,6 +36,19 @@ export default function Shell({
           </form>
         </div>
       </nav>
+      {email && !email.confirmed && (
+        <div className="banner" role="status">
+          <span>
+            Confirm your email so you can reset your password if you forget it.
+            {email.pending ? (
+              <>
+                {" "}We sent a link to <span className="mono">{email.pending}</span>.
+              </>
+            ) : null}
+          </span>
+          <a href="/members/account">{email.pending ? "Resend or change" : "Add email"}</a>
+        </div>
+      )}
       <main className="page">{children}</main>
     </>
   );

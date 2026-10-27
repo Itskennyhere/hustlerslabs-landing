@@ -82,6 +82,14 @@ const EMAIL_STATEMENTS = [
     used_at     TIMESTAMPTZ
   )`,
   `CREATE INDEX IF NOT EXISTS email_tokens_user_idx ON email_tokens(user_id, purpose)`,
+  // X account a creator connected through X login. No X tokens are kept.
+  `CREATE TABLE IF NOT EXISTS x_accounts (
+    user_id       BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    x_user_id     TEXT NOT NULL UNIQUE,
+    username      TEXT NOT NULL,
+    followers     INT,
+    connected_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
 ];
 
 let pending: Promise<void> | null = null;

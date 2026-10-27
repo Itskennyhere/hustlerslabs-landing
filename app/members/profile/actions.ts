@@ -37,3 +37,10 @@ export async function saveProfile(_: ProfileState, form: FormData): Promise<Prof
   revalidatePath("/members");
   redirect("/members");
 }
+
+export async function disconnectX(): Promise<void> {
+  const s = await requireMember();
+  await q`DELETE FROM x_accounts WHERE user_id = ${s.userId}`;
+  revalidatePath("/members", "layout");
+  redirect("/members/profile");
+}

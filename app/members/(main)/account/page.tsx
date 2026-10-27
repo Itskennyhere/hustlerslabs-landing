@@ -3,7 +3,7 @@ import { TOTP, Secret } from "otpauth";
 import { requireMember } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
-import { cancelTotpSetup, removeEmail, startTotp } from "./actions";
+import { cancelTotpSetup, startTotp } from "./actions";
 import { ConfirmTotpForm, DisableTotpForm, EmailForm, PasswordForm, ProjectDetailsForm } from "./Forms";
 import { getAccountType, getProjectProfile } from "@/lib/onboarding";
 
@@ -77,7 +77,7 @@ export default async function AccountPage() {
               sign-in page and we will email you a reset link.
             </>
           ) : (
-            <>No email linked. Link one so you can reset your password if you forget it.</>
+            <>No confirmed email yet. Confirm one so you can reset your password if you forget it.</>
           )}
           {pending[0] && pending[0].email !== email && (
             <>
@@ -86,11 +86,6 @@ export default async function AccountPage() {
           )}
         </p>
         <EmailForm current={email} />
-        {email && (
-          <form action={removeEmail} style={{ marginTop: "0.75rem" }}>
-            <button className="btn ghost small" type="submit">Remove email</button>
-          </form>
-        )}
       </div>
 
       <div className="section">

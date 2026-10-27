@@ -25,7 +25,7 @@ type Initial = {
 
 const bare = (h: string) => h.trim().replace(/^@/, "");
 
-export default function ProfileForm({ initial }: { initial: Initial | null }) {
+export default function ProfileForm({ initial, xConnected }: { initial: Initial | null; xConnected: string | null }) {
   const [state, dispatch, pending] = useActionState(saveProfile, undefined);
   const [v, setV] = useState({
     display_name: initial?.display_name ?? "",
@@ -49,7 +49,7 @@ export default function ProfileForm({ initial }: { initial: Initial | null }) {
   const err = state?.error ? state : undefined;
   const main = rows.find((r) => r.id === mainId) ?? rows[0];
   const filled = rows.filter((r) => bare(r.handle)).map((r) => ({ platform: r.platform, handle: bare(r.handle) }));
-  const photo = avatarUrl(filled, main.platform, bare(main.handle));
+  const photo = xConnected ? avatarUrl([], "x", xConnected) : avatarUrl(filled, main.platform, bare(main.handle));
   const platformErr = err && (err.field === "platforms" || err.field?.startsWith("platform_") || err.field?.startsWith("handle_"));
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -64,7 +64,7 @@ export default function ProfileForm({ initial }: { initial: Initial | null }) {
         <TextField name="display_name" label="Display name" required max={40} defaultValue={v.display_name} onChange={set("display_name")} err={err} />
 
         <p className="note">
-          Profile photo: {photo ? "pulled from your X handle." : "add an X handle to use your X photo. Until then your initials are shown."}
+          Profile photo: {photo ? "pulled from your X account." : "add an X handle to use your X photo. Until then your initials are shown."}
         </p>
 
         <TextField name="bio" label="One-line bio" required max={100} counter defaultValue={v.bio} onChange={set("bio")} err={err} />
@@ -180,6 +180,7 @@ export default function ProfileForm({ initial }: { initial: Initial | null }) {
       <aside className="preview">
         <div className="tag">Preview</div>
         <CreatorCard
+          xConnected={xConnected}
           c={{
             display_name: v.display_name,
             bio: v.bio,

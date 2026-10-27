@@ -2,6 +2,7 @@ import { requireMember } from "@/lib/auth";
 import { getAccountType, getCreatorProfile, getProjectProfile, getWorkspace } from "@/lib/onboarding";
 import CreatorCard from "@/components/CreatorCard";
 import WorkspaceChecklist from "@/components/WorkspaceChecklist";
+import { getXAccount } from "@/lib/x-oauth";
 
 export default async function MembersHome() {
   // Each page re-checks too, so no page is ever reachable just because a layout was skipped.
@@ -9,7 +10,7 @@ export default async function MembersHome() {
   const type = await getAccountType(user.userId);
 
   if (type === "creator") {
-    const profile = await getCreatorProfile(user.userId);
+    const [profile, x] = await Promise.all([getCreatorProfile(user.userId), getXAccount(user.userId)]);
     return (
       <>
         <div className="tag">Creator</div>
@@ -17,7 +18,7 @@ export default async function MembersHome() {
         <p className="sub">This is your creator card. Hustlers Labs uses it to match you with projects.</p>
         {profile && (
           <div className="card-solo">
-            <CreatorCard c={profile} />
+            <CreatorCard c={profile} xConnected={x?.username ?? null} />
             <a className="btn ghost" href="/members/profile">
               Edit profile
             </a>

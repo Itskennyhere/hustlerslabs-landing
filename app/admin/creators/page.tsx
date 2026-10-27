@@ -36,8 +36,9 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Sea
   const region = (typeof sp.region === "string" ? sp.region : "").trim().slice(0, 80);
 
   // Every filter is a bound parameter; empty means "any".
-  const creators = await q<CreatorProfile & { username: string }>`
-    SELECT c.*, u.username FROM creator_profiles c JOIN users u ON u.id = c.user_id
+  const creators = await q<CreatorProfile & { username: string; x_username: string | null; x_followers: number | null }>`
+    SELECT c.*, u.username, x.username AS x_username, x.followers AS x_followers
+    FROM creator_profiles c JOIN users u ON u.id = c.user_id LEFT JOIN x_accounts x ON x.user_id = c.user_id
     WHERE (${niche}::text = '' OR ${niche}::text = ANY(c.niches))
       AND (${audience}::text = '' OR c.audience_band = ${audience}::text)
       AND (${collab}::text = '' OR c.collab_status = ${collab}::text)
@@ -75,9 +76,12 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Sea
         <div className="card-grid">
           {creators.map((c) => (
             <div key={c.user_id} className="card-cell">
-              <CreatorCard c={c} />
+              <CreatorCard c={c} xConnected={c.x_username} />
               <p className="note admin-under">
-                <span className="mono">TG @{c.telegram}</span>
+                <span className="mono">
+                  TG @{c.telegram}
+                  {c.x_followers !== null && ` · X ${c.x_followers.toLocaleString("en-US")}`}
+                </span>
                 <a href={`/admin/members/${c.user_id}`}>Details</a>
               </p>
             </div>

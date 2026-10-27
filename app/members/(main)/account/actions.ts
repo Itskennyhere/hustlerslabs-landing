@@ -10,8 +10,8 @@ import { hashPassword, validatePassword, verifyPassword } from "@/lib/password";
 import { isLimited, recordFailure } from "@/lib/ratelimit";
 import { getAccountType, parseProjectProfile, type ProjectProfile } from "@/lib/onboarding";
 import { EMAIL_RE, FieldError } from "@/lib/validate";
-import { appUrl, mailConfigured, sendMail } from "@/lib/mail";
-import { createEmailToken } from "@/lib/email-tokens";
+import { mailConfigured } from "@/lib/mail";
+import { emailTakenByOther, startEmailConfirm } from "@/lib/email-confirm";
 
 export type Msg = { error?: string; ok?: string; field?: string } | undefined;
 
@@ -125,28 +125,15 @@ export async function sendEmailLink(_: Msg, form: FormData): Promise<Msg> {
   const rows = await q<{ email: string | null; email_verified_at: string | null }>`
     SELECT email, email_verified_at FROM users WHERE id = ${s.userId}`;
   if (rows[0]?.email_verified_at && rows[0].email === email) return { ok: "That email is already confirmed." };
-  const other = await q`SELECT 1 FROM users WHERE lower(email) = ${email} AND email_verified_at IS NOT NULL AND id <> ${s.userId}`;
-  if (other[0]) return { error: "That email is already linked to another account.", field: "email" };
+  if (await emailTakenByOther(email, s.userId)) return { error: "That email is already linked to another account.", field: "email" };
 
   await recordFailure(bucket); // counts sends, successful or not
-  const token = await createEmailToken(s.userId, "verify", email);
   try {
-    await sendMail(
-      email,
-      "Confirm your email for Hustlers Labs",
-      `Hi @${s.username},\n\nConfirm this email to use it for password resets on Hustlers Labs:\n\n${appUrl(`/login/confirm-email?token=${token}`)}\n\nThe link works once and expires in 24 hours. If you did not ask for this, ignore this email.\n`,
-    );
+    await startEmailConfirm(s.userId, s.username, email);
   } catch (e) {
     console.error("email link send failed", e);
     return { error: "Could not send the email. Try again in a few minutes." };
   }
-  revalidatePath("/members/account");
+  revalidatePath("/members", "layout");
   return { ok: `Confirmation link sent to ${email}. It expires in 24 hours.` };
-}
-
-export async function removeEmail(): Promise<void> {
-  const s = await requireMember();
-  await q`UPDATE users SET email = NULL, email_verified_at = NULL WHERE id = ${s.userId}`;
-  await q`UPDATE email_tokens SET used_at = now() WHERE user_id = ${s.userId} AND used_at IS NULL`;
-  revalidatePath("/members/account");
 }
