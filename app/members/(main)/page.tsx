@@ -18,7 +18,7 @@ export default async function MembersHome() {
         <p className="sub">This is your creator card. Hustlers Labs uses it to match you with projects.</p>
         {profile && (
           <div className="card-solo">
-            <CreatorCard c={profile} xConnected={x?.username ?? null} />
+            <CreatorCard c={profile} owner xConnected={x?.username ?? null} />
             <a className="btn ghost" href="/members/profile">
               Edit profile
             </a>
@@ -38,8 +38,13 @@ export default async function MembersHome() {
         <WorkspaceChecklist w={w} />
         <div className="section">
           <h2>Tools</h2>
-          <p className="note" style={{ marginBottom: "1.25rem" }}>Internal tools will live here.</p>
-          <a className="btn ghost" href="/members/tools">Open tools</a>
+          <p className="note" style={{ marginBottom: "1.25rem" }}>
+            Browse vetted creators and request intros. Unlocks when your workspace is complete.
+          </p>
+          <div className="row">
+            <a className="btn" href="/members/creators">Find creators</a>
+            <a className="btn ghost" href="/members/tools">Open tools</a>
+          </div>
         </div>
       </>
     );

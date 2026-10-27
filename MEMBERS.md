@@ -22,14 +22,17 @@ The admin account has no type.
 | `/join` | Anyone with an invite key | Multi-step sign-up: account type, invite key, username, email and password, project details (projects only). Email is required and a confirm link is sent |
 | `/members` | Members | Home. Creators see their card. Projects see the workspace checklist |
 | `/members/profile` | Creators | Set up or edit the creator card, and Connect X. Creators without a card are sent here from every other `/members` page |
+| `/members/profile/saved` | Creators | Shown after the first profile save: "Your card is live." with the card, a Telegram privacy note, Edit profile and Go to home |
 | `/members/profile/x/start`, `/members/profile/x/callback` | Creators | Connect X (X login). Only reads the X id, username and follower count, then revokes the X token |
 | `/members/workspace` | Projects | Workspace checklist and progress (0/3 to 3/3) |
 | `/members/workspace/goals`, `/marketing`, `/buying` | Projects | One section each, saved separately, editable later |
 | `/members/tools` | Members | Tools. Locked for projects until the workspace is 3/3 |
+| `/members/creators` | Projects (workspace 3/3) and admins | Creator roster: verified creators who take collabs, newest verified first. Filters for niche, audience, collab status and region in the URL. Request intro with an optional note (one per creator, 20 a day per project). Never shows Telegram. Creators and other members get a 404 |
 | `/members/account` | Members | Linked email, two-step login, change password. Projects also edit their sign-up answers here |
 | `/admin` | Admin only | Invite keys, members with type and workspace progress |
 | `/admin/members/[id]` | Admin only | Everything a member answered. Creators: card, Telegram, Verify / Unverify |
 | `/admin/creators` | Admin only | Creator roster with filters (niche, audience, collab status, region). Filters live in the URL |
+| `/admin/intros` | Admin only | Intro requests (project, creator with Telegram, note, date) with a status per row: New, Contacted, Introduced, Declined. New ones first. The number of new requests shows beside the Admin link |
 | `/admin/insights` | Admin only | Counts of tools requested, payment preference, budget and goals |
 | `/setup` | Once | Creates the admin account, then returns 404 forever |
 
@@ -44,7 +47,8 @@ Every page under `/members` except `/members/profile` lives in the `app/members/
 Tables: `invites`, `users`, `sessions`, `auth_attempts` (from `/setup`), plus:
 
 - `users.account_type`: `project`, `creator`, or empty (admin and anyone from before onboarding).
-- `creator_profiles`: one row per creator. `telegram` is private: never shown on the card, only in admin views. `verified` is set by an admin.
+- `creator_profiles`: one row per creator. `telegram` is private: never shown on the card, only in admin views. `verified` is set by an admin. `creator_no` is the member number (`No. 0042`), taken from the `creator_no_seq` sequence when the row is created and never changed. Bio is up to 160 characters. `x_user_id`, `x_photo_url`, `x_bio`, `x_followers`, `x_synced_at` and `audience_source` are reserved for syncing from X later and are empty for now.
+- `intro_requests`: a project asking to meet a creator. One row per project and creator (`UNIQUE`), note up to 500 characters, status `new`, `contacted`, `introduced` or `declined`.
 - `project_profiles`: sign-up answers, one row per project.
 - `project_workspace`: workspace answers, one row per project. Each section sets its own `*_done_at` when first saved.
 - `users.email`, `users.email_verified_at`: the linked email. Only a confirmed email is used, and a confirmed email belongs to one account.
@@ -61,7 +65,7 @@ Every choice list (niches, chains, budgets, goals, tools and so on) is in `lib/o
 - Adding an option is safe.
 - Do not change or remove a **value** that is already in use: it is stored in the database. If you must retire one, keep the value and change its label.
 
-Limits (max goals, max tools, platform rows) are in the same file. Field length rules are in `lib/validate.ts`.
+Limits (max goals, max tools, platform rows, intro note length, intros per day) are in the same file, as are the card's collab text (`COLLAB_CARD_TEXT`), the roster's collab filter (`ROSTER_COLLAB`) and the intro statuses (`INTRO_STATUS`). Field length rules are in `lib/validate.ts`.
 
 ## Security
 

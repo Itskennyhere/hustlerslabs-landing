@@ -21,8 +21,8 @@ export async function saveProfile(_: ProfileState, form: FormData): Promise<Prof
     throw e;
   }
 
-  // Always the signed-in user's own row. Verification is left as it is.
-  await q`
+  // Always the signed-in user's own row. Verification and the member number are left as they are.
+  const saved = await q<{ inserted: boolean }>`
     INSERT INTO creator_profiles (
       user_id, display_name, bio, platforms, main_handle, main_platform, niches, audience_band,
       region, languages, collab_status, telegram)
@@ -33,9 +33,11 @@ export async function saveProfile(_: ProfileState, form: FormData): Promise<Prof
       display_name = EXCLUDED.display_name, bio = EXCLUDED.bio, platforms = EXCLUDED.platforms,
       main_handle = EXCLUDED.main_handle, main_platform = EXCLUDED.main_platform, niches = EXCLUDED.niches,
       audience_band = EXCLUDED.audience_band, region = EXCLUDED.region, languages = EXCLUDED.languages,
-      collab_status = EXCLUDED.collab_status, telegram = EXCLUDED.telegram, updated_at = now()`;
+      collab_status = EXCLUDED.collab_status, telegram = EXCLUDED.telegram, updated_at = now()
+    RETURNING (xmax = 0) AS inserted`;
   revalidatePath("/members");
-  redirect("/members");
+  // The first save gets the "Your card is live." screen; later edits go back home.
+  redirect(saved[0]?.inserted ? "/members/profile/saved" : "/members");
 }
 
 export async function disconnectX(): Promise<void> {

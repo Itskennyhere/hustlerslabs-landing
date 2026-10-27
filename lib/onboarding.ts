@@ -30,6 +30,8 @@ export type Platform = { platform: string; handle: string };
 
 export type CreatorProfile = {
   user_id: number;
+  creator_no: number;
+  created_at: string;
   display_name: string;
   bio: string;
   platforms: Platform[];
@@ -111,7 +113,7 @@ export function parseProjectProfile(form: FormData): ProjectProfile {
   };
 }
 
-export type CreatorInput = Omit<CreatorProfile, "user_id" | "verified" | "verified_at">;
+export type CreatorInput = Omit<CreatorProfile, "user_id" | "creator_no" | "created_at" | "verified" | "verified_at">;
 
 export function parseCreatorProfile(form: FormData): CreatorInput {
   // Rows are platform_N / handle_N; `main` holds the N of the main row. Empty rows are skipped.
@@ -210,4 +212,15 @@ export const WORKSPACE_SECTIONS = [
 export function workspaceProgress(w: Workspace | null): number {
   if (!w) return 0;
   return WORKSPACE_SECTIONS.filter((s) => w[s.doneKey]).length;
+}
+
+/** True once a project has finished all workspace sections. Tools and the creator roster wait for this. */
+export async function workspaceComplete(userId: number): Promise<boolean> {
+  return workspaceProgress(await getWorkspace(userId)) === WORKSPACE_SECTIONS.length;
+}
+
+/** New intro requests, for the count beside the Admin link. */
+export async function newIntroCount(): Promise<number> {
+  const r = await q<{ n: number }>`SELECT count(*)::int AS n FROM intro_requests WHERE status = 'new'`;
+  return r[0]?.n ?? 0;
 }

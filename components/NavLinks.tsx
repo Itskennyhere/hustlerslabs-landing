@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
-export default function NavLinks({ links }: { links: { href: string; label: string }[] }) {
+export default function NavLinks({ links }: { links: { href: string; label: string; count?: number }[] }) {
   const path = usePathname();
   return (
     <ul className="shell-links">
@@ -10,6 +10,11 @@ export default function NavLinks({ links }: { links: { href: string; label: stri
         <li key={l.href}>
           <a href={l.href} aria-current={path === l.href ? "page" : undefined}>
             {l.label}
+            {l.count ? (
+              <span className="nav-count" aria-label={`${l.count} new`}>
+                {l.count}
+              </span>
+            ) : null}
           </a>
         </li>
       ))}

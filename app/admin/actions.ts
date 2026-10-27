@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { q } from "@/lib/db";
 import { requireAdmin, destroyAllSessionsFor } from "@/lib/auth";
 import { generateInviteKey, sha256 } from "@/lib/crypto";
+import { INTRO_STATUS } from "@/lib/onboarding-options";
 
 export type InviteState = { key?: string; label?: string; expiresAt?: string; error?: string } | undefined;
 
@@ -65,4 +66,13 @@ export async function signOutMember(form: FormData): Promise<void> {
   if (!Number.isSafeInteger(id) || id === admin.userId) return;
   await destroyAllSessionsFor(id);
   revalidatePath("/admin");
+}
+
+export async function setIntroStatus(form: FormData): Promise<void> {
+  await requireAdmin();
+  const id = Number(form.get("id"));
+  const status = String(form.get("status") ?? "");
+  if (!Number.isSafeInteger(id) || !INTRO_STATUS.some((o) => o.value === status)) return;
+  await q`UPDATE intro_requests SET status = ${status}, updated_at = now() WHERE id = ${id}`;
+  revalidatePath("/admin", "layout");
 }

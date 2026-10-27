@@ -9,6 +9,8 @@ import { avatarUrl } from "@/lib/platforms";
 
 type Row = { id: number; platform: string; handle: string };
 type Initial = {
+  creator_no: number;
+  created_at: string;
   display_name: string;
   bio: string;
   platforms: { platform: string; handle: string }[];
@@ -67,7 +69,7 @@ export default function ProfileForm({ initial, xConnected }: { initial: Initial 
           Profile photo: {photo ? "pulled from your X account." : "add an X handle to use your X photo. Until then your initials are shown."}
         </p>
 
-        <TextField name="bio" label="One-line bio" required max={100} counter defaultValue={v.bio} onChange={set("bio")} err={err} />
+        <TextField name="bio" label="Bio" required max={160} counter defaultValue={v.bio} onChange={set("bio")} err={err} />
 
         <fieldset className="pills-field" aria-invalid={platformErr || undefined}>
           <legend>Platforms and handles *</legend>
@@ -180,8 +182,11 @@ export default function ProfileForm({ initial, xConnected }: { initial: Initial 
       <aside className="preview">
         <div className="tag">Preview</div>
         <CreatorCard
+          owner
           xConnected={xConnected}
           c={{
+            creator_no: initial?.creator_no,
+            created_at: initial?.created_at,
             display_name: v.display_name,
             bio: v.bio,
             platforms: filled,
@@ -190,6 +195,7 @@ export default function ProfileForm({ initial, xConnected }: { initial: Initial 
             niches: v.niches,
             audience_band: v.audience_band,
             region: v.region,
+            languages: v.languages,
             collab_status: v.collab_status,
             verified: initial?.verified,
           }}

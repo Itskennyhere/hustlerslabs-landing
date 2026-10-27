@@ -63,6 +63,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         xConnected={x?.username ?? null}
         initial={
           profile && {
+            creator_no: profile.creator_no,
+            created_at: String(profile.created_at),
             display_name: profile.display_name,
             bio: profile.bio,
             platforms: profile.platforms,

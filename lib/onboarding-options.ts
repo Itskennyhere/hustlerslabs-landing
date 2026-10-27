@@ -40,12 +40,33 @@ export const COLLAB_STATUS = [
   { value: "not_now", label: "Not right now" },
 ] as const;
 
-// Badge text on the creator card, keyed by collab status value.
+// Short badge names (Open, Case by case, Closed) and the text shown on the card footer.
 export const COLLAB_BADGE: Record<string, string> = {
   yes: "Open",
   case_by_case: "Case by case",
   not_now: "Closed",
 };
+export const COLLAB_CARD_TEXT: Record<string, string> = {
+  yes: "Open to collabs",
+  case_by_case: "Case by case",
+  not_now: "Not taking collabs",
+};
+
+// Roster filter for projects. Projects never see "Not right now" creators.
+export const ROSTER_COLLAB = [
+  { value: "", label: "Open or case by case" },
+  { value: "yes", label: "Open" },
+  { value: "case_by_case", label: "Case by case" },
+] as const;
+
+export const INTRO_STATUS = [
+  { value: "new", label: "New" },
+  { value: "contacted", label: "Contacted" },
+  { value: "introduced", label: "Introduced" },
+  { value: "declined", label: "Declined" },
+] as const;
+export const INTRO_NOTE_MAX = 500;
+export const INTROS_PER_DAY = 20;
 
 export const PROJECT_CATEGORIES = [
   { value: "defi", label: "DeFi" },

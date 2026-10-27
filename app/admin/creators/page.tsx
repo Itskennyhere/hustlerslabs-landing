@@ -43,7 +43,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Sea
       AND (${audience}::text = '' OR c.audience_band = ${audience}::text)
       AND (${collab}::text = '' OR c.collab_status = ${collab}::text)
       AND (${region}::text = '' OR position(lower(${region}::text) in lower(c.region)) > 0)
-    ORDER BY c.verified DESC, c.updated_at DESC`;
+    ORDER BY c.verified DESC, c.verified_at DESC NULLS LAST, c.updated_at DESC`;
 
   return (
     <>
@@ -76,7 +76,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Sea
         <div className="card-grid">
           {creators.map((c) => (
             <div key={c.user_id} className="card-cell">
-              <CreatorCard c={c} xConnected={c.x_username} />
+              <CreatorCard c={c} size="compact" xConnected={c.x_username} />
               <p className="note admin-under">
                 <span className="mono">
                   TG @{c.telegram}

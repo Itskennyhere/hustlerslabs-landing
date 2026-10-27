@@ -9,7 +9,7 @@ const ONBOARDING_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS creator_profiles (
     user_id         BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     display_name    TEXT NOT NULL,
-    bio             TEXT NOT NULL CHECK (char_length(bio) <= 100),
+    bio             TEXT NOT NULL,
     platforms       JSONB NOT NULL,
     main_handle     TEXT NOT NULL,
     main_platform   TEXT NOT NULL,
@@ -117,6 +117,37 @@ const SECURITY_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS security_events_user_idx ON security_events(user_id, created_at DESC)`,
 ];
 
+// Creator numbers, bio length, reserved X columns, intro requests.
+const ROSTER_STATEMENTS = [
+  // Member number: taken once from the sequence when the profile row is created, never changed.
+  `CREATE SEQUENCE IF NOT EXISTS creator_no_seq`,
+  `ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS creator_no INT NOT NULL DEFAULT nextval('creator_no_seq')`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS creator_profiles_creator_no_idx ON creator_profiles(creator_no)`,
+  // Bio up to 160 characters (the same as an X bio). Replaces the earlier 100-character check.
+  `ALTER TABLE creator_profiles DROP CONSTRAINT IF EXISTS creator_profiles_bio_check`,
+  `DO $$ BEGIN
+     ALTER TABLE creator_profiles ADD CONSTRAINT creator_profiles_bio_len CHECK (char_length(bio) <= 160);
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  // Reserved for syncing from X later. Left empty for now.
+  `ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS x_user_id TEXT UNIQUE`,
+  `ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS x_photo_url TEXT`,
+  `ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS x_bio TEXT`,
+  `ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS x_followers INT`,
+  `ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS x_synced_at TIMESTAMPTZ`,
+  `ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS audience_source TEXT NOT NULL DEFAULT 'self' CHECK (audience_source IN ('self','x'))`,
+  `CREATE TABLE IF NOT EXISTS intro_requests (
+    id               BIGSERIAL PRIMARY KEY,
+    project_user_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    creator_user_id  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    note             TEXT CHECK (char_length(note) <= 500),
+    status           TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','contacted','introduced','declined')),
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (project_user_id, creator_user_id)
+  )`,
+  `CREATE INDEX IF NOT EXISTS intro_requests_status_idx ON intro_requests(status, created_at DESC)`,
+];
+
 let pending: Promise<void> | null = null;
 
 /** Brings the schema up to date. Runs at most once per server instance. */
@@ -124,7 +155,7 @@ export function ensureSchema(): Promise<void> {
   pending ??= (async () => {
     const sql = db();
     // Base tables first (also idempotent), so a fresh database works before /setup has run.
-    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS, ...SECURITY_STATEMENTS]) await sql.unsafe(stmt);
+    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS, ...SECURITY_STATEMENTS, ...ROSTER_STATEMENTS]) await sql.unsafe(stmt);
   })().catch((err) => {
     pending = null; // let the next request retry
     throw err;

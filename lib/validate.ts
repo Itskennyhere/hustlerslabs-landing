@@ -9,7 +9,7 @@ export class FieldError extends Error {
   }
 }
 
-export const LIMITS = { name: 80, bio: 100, text: 500, handle: 40 } as const;
+export const LIMITS = { name: 80, bio: 160, text: 500, handle: 40 } as const;
 
 // Deliberately strict: plain addresses only, no comments, quotes or unicode tricks.
 export const EMAIL_RE = /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}$/;

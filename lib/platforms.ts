@@ -9,7 +9,7 @@ const URLS: Record<string, (h: string) => string> = {
   tiktok: (h) => `https://www.tiktok.com/@${h}`,
 };
 
-export const PLATFORM_SHORT: Record<string, string> = { x: "X", youtube: "YT", telegram: "TG", tiktok: "TT", other: "..." };
+export const PLATFORM_SHORT: Record<string, string> = { x: "X", youtube: "YT", telegram: "TG", tiktok: "TT", other: "+" };
 
 export function cleanHandle(raw: string): string | null {
   const h = raw.trim().replace(/^@/, "");

@@ -9,20 +9,27 @@ export default function Shell({
   user,
   accountType = null,
   email = null,
+  newIntros = 0,
   children,
 }: {
   user: SessionUser;
   accountType?: AccountType | null;
   email?: EmailStatus | null;
+  newIntros?: number;
   children: React.ReactNode;
 }) {
   const links = [
     { href: "/members", label: "Home" },
     ...(accountType === "creator" ? [{ href: "/members/profile", label: "Profile" }] : []),
-    ...(accountType === "project" ? [{ href: "/members/workspace", label: "Workspace" }] : []),
+    ...(accountType === "project"
+      ? [
+          { href: "/members/workspace", label: "Workspace" },
+          { href: "/members/creators", label: "Creators" },
+        ]
+      : []),
     { href: "/members/tools", label: "Tools" },
     { href: "/members/account", label: "Account" },
-    ...(user.role === "admin" ? [{ href: "/admin", label: "Admin" }] : []),
+    ...(user.role === "admin" ? [{ href: "/admin", label: "Admin", count: newIntros }] : []),
   ];
   return (
     <>
