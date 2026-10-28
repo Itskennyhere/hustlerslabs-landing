@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <AuthShell>
       <div className="tag">Members only</div>
       <h1>Sign in.</h1>
-      <p className="sub">Access for invited members of Hustlers Labs.</p>
+      <p className="sub">The members area of Hustlers Labs.</p>
       {(await searchParams).locked === "1" && (
         <p className="error" role="alert" style={{ marginBottom: "1rem" }}>
           Too many wrong codes. For your safety, sign in again in 15 minutes.
@@ -31,7 +31,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </p>
       )}
       <p className="alt">
-        Got an invite key? <a href="/join">Create your account.</a>
+        New here? <a href="/join">Create an account.</a>
       </p>
     </AuthShell>
   );

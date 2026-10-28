@@ -21,7 +21,7 @@ import {
 } from "@/lib/onboarding-options";
 import CreatorCard from "@/components/CreatorCard";
 import { ProgressBar } from "@/components/WorkspaceChecklist";
-import { setCreatorVerified, setMemberDisabled, signOutMember } from "../../actions";
+import { approveMember, setCreatorVerified, setMemberDisabled, signOutMember } from "../../actions";
 import { BackLink } from "@/components/list";
 import { fmtDate } from "@/lib/list";
 import { getXAccount } from "@/lib/x-oauth";
@@ -36,6 +36,8 @@ type UserRow = {
   disabled_at: string | null;
   email: string | null;
   last_login_at: string | null;
+  approved_at: string | null;
+  is_owner: boolean;
 };
 
 
@@ -57,15 +59,18 @@ export default async function AdminMemberPage({ params }: { params: Promise<{ id
   const { id: raw } = await params;
   const id = Number(raw);
   if (!Number.isSafeInteger(id) || id <= 0) notFound();
-  const rows = await q<UserRow>`SELECT id, username, role, account_type, created_at, disabled_at, last_login_at,
+  const rows = await q<UserRow>`SELECT id, username, role, account_type, created_at, disabled_at, last_login_at, approved_at, is_owner,
            CASE WHEN email_verified_at IS NOT NULL THEN email END AS email
     FROM users WHERE id = ${id}`;
   const u = rows[0];
   if (!u) notFound();
 
-  const type = u.role === "admin" ? "Admin" : u.account_type === "project" ? "Project" : u.account_type === "creator" ? "Creator" : "Member";
+  const type = u.is_owner ? "Owner" : u.role === "admin" ? "Admin" : u.account_type === "project" ? "Project" : u.account_type === "creator" ? "Creator" : "Member";
 
   const self = Number(u.id) === admin.userId;
+  // Members can be managed by any admin; other admins only by the owner; the owner by nobody.
+  const canManage = !self && !u.is_owner && (u.role === "member" || admin.isOwner);
+  const waiting = u.role === "member" && !u.approved_at && !u.disabled_at;
   return (
     <>
       <BackLink href="/admin/members">Back to members</BackLink>
@@ -74,8 +79,31 @@ export default async function AdminMemberPage({ params }: { params: Promise<{ id
       <p className="sub">
         {type}. Joined {fmtDate(u.created_at)}. Last login {fmtDate(u.last_login_at)}.{u.email ? ` Email ${u.email}.` : ""}
         {u.disabled_at ? " Disabled." : ""}
+        {waiting ? " Waiting for approval." : ""}
       </p>
-      {!self && u.role !== "admin" && (
+      {waiting && (
+        <div className="panel member-actions">
+          <p className="note" style={{ marginBottom: "0.75rem" }}>
+            {u.email ? "Email confirmed." : "Email not confirmed yet."} Review their answers below, then approve to let them in. Decline disables the account.
+          </p>
+          <div className="row">
+            <form action={approveMember}>
+              <input type="hidden" name="id" value={u.id} />
+              <button className="btn" type="submit">
+                Approve
+              </button>
+            </form>
+            <form action={setMemberDisabled}>
+              <input type="hidden" name="id" value={u.id} />
+              <input type="hidden" name="disable" value="1" />
+              <button className="btn danger" type="submit">
+                Decline
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      {canManage && !waiting && (
         <div className="row member-actions">
           <form action={signOutMember}>
             <input type="hidden" name="id" value={u.id} />

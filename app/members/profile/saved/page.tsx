@@ -5,7 +5,7 @@ import { getXAccount } from "@/lib/x-oauth";
 import CreatorCard from "@/components/CreatorCard";
 
 export default async function ProfileSavedPage() {
-  const s = await requireMember();
+  const s = await requireMember({ allowPending: true });
   if ((await getAccountType(s.userId)) !== "creator") redirect("/members");
   const [profile, x] = await Promise.all([getCreatorProfile(s.userId), getXAccount(s.userId)]);
   if (!profile) redirect("/members/profile");

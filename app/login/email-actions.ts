@@ -9,6 +9,7 @@ import { appUrl, mailConfigured, sendMail } from "@/lib/mail";
 import { TOKEN_MINUTES, createEmailToken, peekEmailToken } from "@/lib/email-tokens";
 import { hashPassword } from "@/lib/password";
 import { checkNewPassword, logEvent } from "@/lib/security";
+import { notifyAdminsOfSignup } from "@/lib/approval";
 import { clearFailures, clientIp, isLimited, recordFailure } from "@/lib/ratelimit";
 
 export type EmailFormState = { error?: string; ok?: string } | undefined;
@@ -130,5 +131,7 @@ export async function confirmEmail(_: EmailFormState, form: FormData): Promise<E
     if ((e as { code?: string }).code === "23505") return { error: "That email is already linked to another account." };
     throw e;
   }
-  return { ok: `${t.email} is confirmed. You can use it to reset your password.` };
+  // A new member who just confirmed is now waiting for a team member: tell the team.
+  after(() => notifyAdminsOfSignup(Number(t.user_id)));
+  return { ok: `${t.email} is confirmed. You can sign in with it and use it to reset your password.` };
 }

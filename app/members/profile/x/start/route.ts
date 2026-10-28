@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // Starts "Connect X". Route handlers skip layouts, so every check is repeated here.
 export async function GET() {
   await ensureSchema();
-  const s = await requireMember();
+  const s = await requireMember({ allowPending: true });
   if ((await getAccountType(s.userId)) !== "creator" || !xConfigured()) redirect("/members/profile");
 
   const state = randomToken(16);

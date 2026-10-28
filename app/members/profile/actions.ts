@@ -10,7 +10,7 @@ import { FieldError } from "@/lib/validate";
 export type ProfileState = { error?: string; field?: string } | undefined;
 
 export async function saveProfile(_: ProfileState, form: FormData): Promise<ProfileState> {
-  const s = await requireMember();
+  const s = await requireMember({ allowPending: true });
   if ((await getAccountType(s.userId)) !== "creator") return { error: "Only creator accounts have a creator profile." };
 
   let p: CreatorInput;
@@ -41,7 +41,7 @@ export async function saveProfile(_: ProfileState, form: FormData): Promise<Prof
 }
 
 export async function disconnectX(): Promise<void> {
-  const s = await requireMember();
+  const s = await requireMember({ allowPending: true });
   await q`DELETE FROM x_accounts WHERE user_id = ${s.userId}`;
   revalidatePath("/members", "layout");
   redirect("/members/profile");

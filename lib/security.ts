@@ -58,6 +58,9 @@ export const EVENT_LABELS: Record<string, string> = {
   email_changed: "Email changed",
   sessions_revoked: "Signed out other devices",
   session_revoked: "Signed out a device",
+  account_approved: "Account approved",
+  admin_key_created: "Admin key generated",
+  owner_claimed: "Became the owner",
 };
 
 const ALERTS: Record<string, string> = {
@@ -68,6 +71,8 @@ const ALERTS: Record<string, string> = {
   totp_off: "Two-step login was turned off on your Hustlers Labs account",
   recovery_regenerated: "New recovery codes for your Hustlers Labs account",
   email_changed: "The email on your Hustlers Labs account was changed",
+  admin_key_created: "An admin key was generated on your Hustlers Labs account",
+  owner_claimed: "Your Hustlers Labs account is now the owner",
 };
 
 /**

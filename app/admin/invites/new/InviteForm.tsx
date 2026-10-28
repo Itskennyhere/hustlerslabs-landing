@@ -24,6 +24,14 @@ export default function InviteForm() {
             <option value="168">7 days</option>
           </select>
         </label>
+        <label>
+          Your password
+          <input name="current_password" type="password" autoComplete="current-password" required maxLength={256} />
+        </label>
+        <label>
+          6-digit code from your app
+          <input name="code" className="mono" inputMode="numeric" autoComplete="one-time-code" maxLength={7} required />
+        </label>
         <SubmitButton pending="Generating...">Generate key</SubmitButton>
       </form>
 
@@ -32,7 +40,7 @@ export default function InviteForm() {
       {state?.key && (
         <div className="reveal">
           <div className="tag" style={{ marginBottom: 0 }}>
-            Key{state.label ? ` for ${state.label}` : ""}. Shown once only.
+            Admin key{state.label ? ` for ${state.label}` : ""}. Shown once only.
           </div>
           <code>{state.key}</code>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -51,7 +59,7 @@ export default function InviteForm() {
             <span className="note">
               Expires{" "}
               {fmtDateTime(state.expiresAt)}
-              . They sign up at hustlerslabs.com/join.
+              . They join at hustlerslabs.com/join/admin and become an admin.
             </span>
           </div>
         </div>

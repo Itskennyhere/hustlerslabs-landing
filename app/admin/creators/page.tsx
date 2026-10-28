@@ -83,7 +83,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
             </>
           ) : (
             <>
-              No creator profiles yet. They appear here once a creator saves their card. <a href="/admin/invites/new">Invite a creator.</a>
+              No creator profiles yet. They appear here once a creator saves their card.
             </>
           )}
         </Empty>

@@ -10,9 +10,9 @@ export default async function JoinPage() {
   if (s?.mfaVerified) redirect("/members");
   return (
     <AuthShell>
-      <div className="tag">Invite only</div>
+      <div className="tag">Join</div>
       <h1>Create your account.</h1>
-      <p className="sub">Tell us who you are, enter the invite key you were given, then choose your username, email and password.</p>
+      <p className="sub">Tell us who you are and choose your login. A member of the Hustlers Labs team reviews every new account before it opens.</p>
       <JoinForm />
       <p className="alt">
         Already a member? <a href="/login">Sign in.</a>

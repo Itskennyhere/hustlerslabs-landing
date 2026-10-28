@@ -10,6 +10,7 @@ const TYPES = [
   { value: "member", label: "Member (no type)" },
 ] as const;
 const STATUSES = [
+  { value: "pending", label: "Waiting for approval" },
   { value: "active", label: "Active" },
   { value: "disabled", label: "Disabled" },
 ] as const;
@@ -34,6 +35,8 @@ type Row = {
   role: string;
   account_type: string | null;
   disabled_at: string | null;
+  approved_at: string | null;
+  is_owner: boolean;
   totp_enabled: boolean;
   created_at: string;
   last_login_at: string | null;
@@ -41,7 +44,7 @@ type Row = {
   progress: number | null;
 };
 
-const typeLabel = (r: Row) => (r.role === "admin" ? "Admin" : r.account_type === "project" ? "Project" : r.account_type === "creator" ? "Creator" : "Member");
+const typeLabel = (r: Row) => (r.is_owner ? "Owner" : r.role === "admin" ? "Admin" : r.account_type === "project" ? "Project" : r.account_type === "creator" ? "Creator" : "Member");
 
 export default async function MembersPage({ searchParams }: { searchParams: Promise<Search> }) {
   const admin = await requireAdmin();
@@ -57,7 +60,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   // One filtered set, counted once and paged in SQL. Every filter is a bound parameter.
   const rows = await q<Row>`
     WITH f AS (
-      SELECT u.id, u.username, u.role, u.account_type, u.disabled_at, u.totp_enabled, u.created_at, u.last_login_at,
+      SELECT u.id, u.username, u.role, u.account_type, u.disabled_at, u.approved_at, u.is_owner, u.totp_enabled, u.created_at, u.last_login_at,
              CASE WHEN u.email_verified_at IS NOT NULL THEN u.email END AS email,
              p.project_name,
              CASE WHEN u.account_type = 'project' THEN
@@ -74,7 +77,10 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
              OR (${type}::text = 'admin' AND u.role = 'admin')
              OR (${type}::text = 'member' AND u.role <> 'admin' AND u.account_type IS NULL)
              OR (u.role <> 'admin' AND u.account_type = ${type}::text))
-        AND (${status}::text = '' OR (${status}::text = 'disabled') = (u.disabled_at IS NOT NULL))
+        AND (${status}::text = ''
+             OR (${status}::text = 'disabled' AND u.disabled_at IS NOT NULL)
+             OR (${status}::text = 'pending' AND u.disabled_at IS NULL AND u.role = 'member' AND u.approved_at IS NULL)
+             OR (${status}::text = 'active' AND u.disabled_at IS NULL AND (u.role = 'admin' OR u.approved_at IS NOT NULL)))
         AND (${tfa}::text = '' OR (${tfa}::text = 'on') = u.totp_enabled)
         AND (${workspace}::text = '' OR (u.account_type = 'project' AND
              (${workspace}::text = 'done') = (w.goals_done_at IS NOT NULL AND w.marketing_done_at IS NOT NULL AND w.buying_done_at IS NOT NULL)))
@@ -115,7 +121,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
             </>
           ) : (
             <>
-              No members yet. <a href="/admin/invites/new">Generate an invite key.</a>
+              No members yet. Share hustlerslabs.com/join: new sign-ups appear here for approval.
             </>
           )}
         </Empty>
@@ -145,7 +151,9 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
                 <td>{typeLabel(m)}</td>
                 <td className="mono">{m.account_type === "project" && m.role !== "admin" ? `${m.progress ?? 0}/3` : "-"}</td>
                 <td>
-                  <StatusPill on={!m.disabled_at}>{m.disabled_at ? "Disabled" : "Active"}</StatusPill>
+                  <StatusPill on={!m.disabled_at && (m.role === "admin" || Boolean(m.approved_at))}>
+                    {m.disabled_at ? "Disabled" : m.role !== "admin" && !m.approved_at ? "Waiting" : "Active"}
+                  </StatusPill>
                 </td>
                 <td>{m.totp_enabled ? "On" : "Off"}</td>
                 <td>{fmtDate(m.created_at)}</td>

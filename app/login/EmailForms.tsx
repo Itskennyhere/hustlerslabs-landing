@@ -45,7 +45,7 @@ export function ConfirmEmailForm({ token }: { token: string }) {
     return (
       <>
         <p className="note" role="status">{state.ok}</p>
-        <p className="alt"><a href="/members/account">Go to Account.</a></p>
+        <p className="alt"><a className="btn" href="/members">Continue</a></p>
       </>
     );
   }

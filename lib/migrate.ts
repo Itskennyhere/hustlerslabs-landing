@@ -154,6 +154,20 @@ const ROSTER_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS intro_requests_status_idx ON intro_requests(status, created_at DESC)`,
 ];
 
+// Open sign-up with approval, and admin-only keys.
+const APPROVAL_STATEMENTS = [
+  // Accounts that exist when this column is added count as approved (the default fills them once);
+  // the default is then dropped, so every new sign-up starts unapproved.
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ DEFAULT now()`,
+  `ALTER TABLE users ALTER COLUMN approved_at DROP DEFAULT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_by BIGINT`,
+  // Keys now only create admin accounts. Keys made before this have no kind and no longer work.
+  `ALTER TABLE invites ADD COLUMN IF NOT EXISTS kind TEXT`,
+  // The owner: one admin with full control, claimed once with OWNER_CLAIM_TOKEN.
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_owner BOOLEAN NOT NULL DEFAULT false`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS users_one_owner_idx ON users (is_owner) WHERE is_owner`,
+];
+
 let pending: Promise<void> | null = null;
 
 /** Brings the schema up to date. Runs at most once per server instance. */
@@ -161,7 +175,7 @@ export function ensureSchema(): Promise<void> {
   pending ??= (async () => {
     const sql = db();
     // Base tables first (also idempotent), so a fresh database works before /setup has run.
-    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS, ...SECURITY_STATEMENTS, ...ROSTER_STATEMENTS]) await sql.unsafe(stmt);
+    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS, ...SECURITY_STATEMENTS, ...ROSTER_STATEMENTS, ...APPROVAL_STATEMENTS]) await sql.unsafe(stmt);
   })().catch((err) => {
     pending = null; // let the next request retry
     throw err;

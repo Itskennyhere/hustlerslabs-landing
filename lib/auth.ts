@@ -6,6 +6,7 @@ import { q } from "./db";
 import { randomToken, sha256 } from "./crypto";
 import { ensureSchema } from "./migrate";
 import { requestInfo } from "./security";
+import { mailConfigured } from "./mail";
 
 const PROD = process.env.NODE_ENV === "production";
 // __Host- prefix: cookie is Secure, host-only and path=/, so subdomains cannot set or read it.
@@ -27,6 +28,10 @@ export type SessionUser = {
   /** Pending sessions only: the sign-in step still to do. */
   stage: "totp" | "email" | null;
   emailConfirmed: boolean;
+  /** Members need a team member's approval before they are let in. Admins always are. */
+  approved: boolean;
+  /** The one admin with full control (admin keys, managing other admins). */
+  isOwner: boolean;
 };
 
 async function setCookie(token: string, expires: Date) {
@@ -75,9 +80,12 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
     mfa_verified: boolean;
     stage: "totp" | "email" | null;
     email_ok: boolean;
+    approved: boolean;
+    is_owner: boolean;
   }>`
     SELECT s.id AS session_id, u.id AS user_id, u.username, u.role, u.totp_enabled, s.mfa_verified, s.stage,
-           (u.email_verified_at IS NOT NULL) AS email_ok
+           (u.email_verified_at IS NOT NULL) AS email_ok, (u.role = 'admin' OR u.approved_at IS NOT NULL) AS approved,
+           (u.role = 'admin' AND u.is_owner) AS is_owner
     FROM sessions s JOIN users u ON u.id = s.user_id
     WHERE s.token_hash = ${sha256(token)} AND s.expires_at > now() AND u.disabled_at IS NULL
     LIMIT 1`;
@@ -95,13 +103,22 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
     mfaVerified: r.mfa_verified,
     stage: r.stage,
     emailConfirmed: r.email_ok,
+    approved: r.approved,
+    isOwner: r.is_owner,
   };
 });
 
-export async function requireMember(): Promise<SessionUser> {
+/**
+ * A signed-in member who has finished every sign-in step, confirmed their email (when email is set up)
+ * and been approved. `allowPending` lets an unapproved member through, for the creator card they can
+ * fill in while they wait.
+ */
+export async function requireMember({ allowPending = false }: { allowPending?: boolean } = {}): Promise<SessionUser> {
   const s = await getSession();
   if (!s) redirect("/login");
   if (!s.mfaVerified) redirect(s.stage === "email" ? "/login/email-code" : "/login/verify");
+  // New members wait outside until they confirm their email (when email is set up) and a team member approves them.
+  if (s.role !== "admin" && ((!s.approved && !allowPending) || (mailConfigured() && !s.emailConfirmed))) redirect("/join/waiting");
   return s;
 }
 
@@ -112,6 +129,13 @@ export async function requireAdmin(): Promise<SessionUser> {
   // A confirmed email is not required here, so the admin can never be locked out by email setup.
   // Once one is confirmed (and email is set up), every admin sign-in also needs an emailed code.
   if (!s.totpEnabled) redirect("/members/account/two-step?admin=1");
+  return s;
+}
+
+/** The owner only. Other admins are sent back to the admin overview. */
+export async function requireOwner(): Promise<SessionUser> {
+  const s = await requireAdmin();
+  if (!s.isOwner) redirect("/admin");
   return s;
 }
 

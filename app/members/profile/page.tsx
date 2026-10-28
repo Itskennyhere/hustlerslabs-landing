@@ -13,7 +13,7 @@ const X_MESSAGES: Record<string, { text: string; error?: boolean }> = {
 };
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ x?: string }> }) {
-  const s = await requireMember();
+  const s = await requireMember({ allowPending: true });
   if ((await getAccountType(s.userId)) !== "creator") redirect("/members");
   const [profile, x] = await Promise.all([getCreatorProfile(s.userId), getXAccount(s.userId)]);
   const msg = X_MESSAGES[(await searchParams).x ?? ""];

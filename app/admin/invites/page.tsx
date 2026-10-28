@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { PAGE_SIZE, fmtDateTime, offsetFor, pageNumber, pick, searchText, type Search } from "@/lib/list";
 import { Empty, ListSearch, ListTotal, Pager, StatusPill, TableBox, Tabs } from "@/components/list";
@@ -10,7 +10,7 @@ const TAB_LABEL: Record<Tab, string> = { active: "Active", used: "Used", expired
 const EMPTY: Record<Tab, React.ReactNode> = {
   active: (
     <>
-      No active keys. <a href="/admin/invites/new">Generate one.</a>
+      No active admin keys. <a href="/admin/invites/new">Generate one</a> when someone joins the team.
     </>
   ),
   used: "No keys have been used yet.",
@@ -21,7 +21,7 @@ const EMPTY: Record<Tab, React.ReactNode> = {
 type Row = { id: number; label: string | null; created_at: string; expires_at: string; used_by: string | null; used_by_id: number | null };
 
 export default async function InvitesPage({ searchParams }: { searchParams: Promise<Search> }) {
-  await requireAdmin();
+  await requireOwner();
   const sp = await searchParams;
   const tab = pick(sp.tab, TABS, "active");
   const term = searchText(sp.q);
@@ -35,12 +35,12 @@ export default async function InvitesPage({ searchParams }: { searchParams: Prom
              count(*) FILTER (WHERE used_at IS NULL AND revoked_at IS NULL AND expires_at <= now())::int AS expired,
              count(*) FILTER (WHERE used_at IS NULL AND revoked_at IS NOT NULL)::int AS revoked
       FROM invites
-      WHERE (${term}::text = '' OR position(lower(${term}::text) in lower(coalesce(label, ''))) > 0)`,
+      WHERE kind = 'admin' AND (${term}::text = '' OR position(lower(${term}::text) in lower(coalesce(label, ''))) > 0)`,
     q<Row>`
       WITH f AS (
         SELECT i.id, i.label, i.created_at, i.expires_at, u.username AS used_by, u.id AS used_by_id
         FROM invites i LEFT JOIN users u ON u.invite_id = i.id
-        WHERE (${term}::text = '' OR position(lower(${term}::text) in lower(coalesce(i.label, ''))) > 0)
+        WHERE i.kind = 'admin' AND (${term}::text = '' OR position(lower(${term}::text) in lower(coalesce(i.label, ''))) > 0)
           AND CASE ${tab}::text
                 WHEN 'active' THEN i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now()
                 WHEN 'used' THEN i.used_at IS NOT NULL
@@ -60,7 +60,7 @@ export default async function InvitesPage({ searchParams }: { searchParams: Prom
       <div className="list-head">
         <div>
           <div className="tag">Admin</div>
-          <h1>Invite keys.</h1>
+          <h1>Admin keys.</h1>
         </div>
         <a className="btn" href="/admin/invites/new">
           Generate key
@@ -69,7 +69,7 @@ export default async function InvitesPage({ searchParams }: { searchParams: Prom
 
       <Tabs base="/admin/invites" params={params} current={tab} tabs={TABS.map((t) => ({ value: t, label: TAB_LABEL[t], count: counts[0][t] }))} />
       <ListSearch base="/admin/invites" q={term} placeholder="Search by who it is for" keep={{ tab }} />
-      <ListTotal total={total} one={`${TAB_LABEL[tab].toLowerCase()} key`} />
+      <ListTotal total={total} one={`${TAB_LABEL[tab].toLowerCase()} admin key`} />
 
       {rows.length === 0 ? (
         <Empty>{term ? "No keys match this search." : EMPTY[tab]}</Empty>

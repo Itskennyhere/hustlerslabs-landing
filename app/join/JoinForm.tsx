@@ -6,7 +6,7 @@ import { TextField } from "@/components/fields";
 import ProjectFields, { PROJECT_FIELD_NAMES, type ProjectValues } from "@/components/ProjectFields";
 
 type Type = "project" | "creator" | "";
-const ACCOUNT_FIELDS = ["invite", "username", "email", "password", "confirm"];
+const ACCOUNT_FIELDS = ["username", "email", "password", "confirm"];
 
 function stepForField(field: string | undefined): number | null {
   if (!field) return null;
@@ -101,7 +101,6 @@ export default function JoinForm() {
       {step === 2 ? (
         <>
           <h2 className="step-title">Your account</h2>
-          <TextField name="invite" label="Invite key" required max={40} placeholder="HL-XXXX-XXXX-XXXX-XXXX" defaultValue={account.invite} onChange={setA("invite")} err={err} />
           <TextField
             name="username"
             label="Username"
@@ -120,7 +119,7 @@ export default function JoinForm() {
             required
             max={254}
             autoComplete="email"
-            note="Used to reset your password. We will send a link to confirm it."
+            note="We will send a link to confirm it. You sign in with it later."
             defaultValue={account.email}
             onChange={setA("email")}
             err={err}

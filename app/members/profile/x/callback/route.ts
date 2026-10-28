@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 // X sends the creator back here after they approve (or cancel) "Connect X".
 export async function GET(req: NextRequest) {
   await ensureSchema();
-  const s = await requireMember();
+  const s = await requireMember({ allowPending: true });
   if ((await getAccountType(s.userId)) !== "creator" || !xConfigured()) redirect("/members/profile");
 
   const jar = await cookies();
