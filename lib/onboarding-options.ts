@@ -3,11 +3,6 @@
 
 export type Option = { readonly value: string; readonly label: string };
 
-export const ACCOUNT_TYPES = [
-  { value: "project", label: "Project" },
-  { value: "creator", label: "Creator" },
-] as const;
-
 export const PLATFORMS = [
   { value: "x", label: "X" },
   { value: "youtube", label: "YouTube" },

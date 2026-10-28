@@ -9,7 +9,7 @@ export default function LoginForm() {
   return (
     <form action={action} className="stack">
       <label>
-        Email
+        Email or username
         <input
           name="username"
           autoComplete="username"
@@ -18,9 +18,7 @@ export default function LoginForm() {
           spellCheck={false}
           required
           maxLength={254}
-          placeholder="you@example.com"
         />
-        <span className="field-note">No confirmed email yet? Use your username.</span>
       </label>
       <label>
         Password

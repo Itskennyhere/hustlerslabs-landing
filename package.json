@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@node-rs/argon2": "2.2.2",
-    "next": "16.4.2",
+    "next": "16.4.3",
     "nodemailer": "10.2.1",
     "otpauth": "9.5.2",
     "postgres": "^3.4.9",

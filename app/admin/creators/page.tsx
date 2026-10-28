@@ -1,93 +1,131 @@
 import { requireAdmin } from "@/lib/auth";
 import { q } from "@/lib/db";
-import type { CreatorProfile } from "@/lib/onboarding";
-import { COLLAB_STATUS, CREATOR_AUDIENCE, NICHES, type Option } from "@/lib/onboarding-options";
-import CreatorCard from "@/components/CreatorCard";
+import { COLLAB_BADGE, COLLAB_STATUS, CREATOR_AUDIENCE, NICHES, labelOf } from "@/lib/onboarding-options";
+import { PAGE_SIZE, fmtDate, offsetFor, pageNumber, anyOf, pick, searchText, type Search } from "@/lib/list";
+import { creatorNo } from "@/components/CreatorCard";
+import { Empty, FilterSelect, ListSearch, ListTotal, Pager, StatusPill, TableBox } from "@/components/list";
 
-type Search = Promise<Record<string, string | string[] | undefined>>;
+const STATUS = [
+  { value: "pending", label: "Pending review" },
+  { value: "verified", label: "Verified" },
+] as const;
 
-function pick(v: string | string[] | undefined, list: readonly Option[]): string {
-  const s = typeof v === "string" ? v : "";
-  return list.some((o) => o.value === s) ? s : "";
-}
+type Row = {
+  total: number;
+  user_id: number | null;
+  creator_no: number;
+  display_name: string;
+  main_handle: string;
+  verified: boolean;
+  collab_status: string;
+  audience_band: string;
+  region: string;
+  telegram: string;
+  created_at: string;
+  x_followers: number | null;
+};
 
-function FilterSelect({ name, label, list, value }: { name: string; label: string; list: readonly Option[]; value: string }) {
-  return (
-    <label>
-      {label}
-      <select name={name} defaultValue={value}>
-        <option value="">Any</option>
-        {list.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-export default async function CreatorsPage({ searchParams }: { searchParams: Search }) {
+export default async function CreatorsPage({ searchParams }: { searchParams: Promise<Search> }) {
   await requireAdmin();
   const sp = await searchParams;
-  const niche = pick(sp.niche, NICHES);
-  const audience = pick(sp.audience, CREATOR_AUDIENCE);
-  const collab = pick(sp.collab, COLLAB_STATUS);
-  const region = (typeof sp.region === "string" ? sp.region : "").trim().slice(0, 80);
+  const term = searchText(sp.q);
+  const status = pick(sp.status, anyOf(STATUS), "");
+  const niche = pick(sp.niche, anyOf(NICHES), "");
+  const audience = pick(sp.audience, anyOf(CREATOR_AUDIENCE), "");
+  const collab = pick(sp.collab, anyOf(COLLAB_STATUS), "");
+  const page = pageNumber(sp.page);
 
-  // Every filter is a bound parameter; empty means "any".
-  const creators = await q<CreatorProfile & { username: string; x_username: string | null; x_followers: number | null }>`
-    SELECT c.*, u.username, x.username AS x_username, x.followers AS x_followers
-    FROM creator_profiles c JOIN users u ON u.id = c.user_id LEFT JOIN x_accounts x ON x.user_id = c.user_id
-    WHERE (${niche}::text = '' OR ${niche}::text = ANY(c.niches))
-      AND (${audience}::text = '' OR c.audience_band = ${audience}::text)
-      AND (${collab}::text = '' OR c.collab_status = ${collab}::text)
-      AND (${region}::text = '' OR position(lower(${region}::text) in lower(c.region)) > 0)
-    ORDER BY c.verified DESC, c.verified_at DESC NULLS LAST, c.updated_at DESC`;
+  const rows = await q<Row>`
+    WITH f AS (
+      SELECT c.user_id, c.creator_no, c.display_name, c.main_handle, c.verified, c.verified_at, c.collab_status,
+             c.audience_band, c.region, c.telegram, c.created_at, x.followers AS x_followers
+      FROM creator_profiles c JOIN users u ON u.id = c.user_id LEFT JOIN x_accounts x ON x.user_id = c.user_id
+      WHERE (${term}::text = ''
+             OR position(lower(${term}::text) in lower(c.display_name)) > 0
+             OR position(lower(${term}::text) in lower(c.main_handle)) > 0
+             OR position(lower(${term}::text) in lower(c.region)) > 0
+             OR position(lower(${term}::text) in u.username) > 0)
+        AND (${status}::text = '' OR (${status}::text = 'verified') = c.verified)
+        AND (${niche}::text = '' OR ${niche}::text = ANY(c.niches))
+        AND (${audience}::text = '' OR c.audience_band = ${audience}::text)
+        AND (${collab}::text = '' OR c.collab_status = ${collab}::text)
+    ),
+    n AS (SELECT count(*)::int AS total FROM f)
+    SELECT n.total, pg.* FROM n
+    LEFT JOIN LATERAL (
+      SELECT * FROM f ORDER BY f.verified, f.verified_at DESC NULLS LAST, f.created_at DESC, f.user_id DESC
+      LIMIT ${PAGE_SIZE} OFFSET ${offsetFor(page)}
+    ) pg ON true
+    ORDER BY pg.verified, pg.verified_at DESC NULLS LAST, pg.created_at DESC, pg.user_id DESC`;
+  const total = rows[0]?.total ?? 0;
+  const list = rows.filter((r) => r.user_id !== null);
+  const params = { q: term, status, niche, audience, collab };
 
   return (
     <>
       <div className="tag">Admin</div>
-      <h1>Creator roster.</h1>
-      <p className="sub">Every creator with a profile. Telegram is visible here only.</p>
+      <h1>Creators.</h1>
+      <p className="sub">Pending creators first. Open one to see their card and Telegram, and to verify them.</p>
 
-      <form className="row filters" method="get">
-        <FilterSelect name="niche" label="Niche" list={NICHES} value={niche} />
-        <FilterSelect name="audience" label="Audience" list={CREATOR_AUDIENCE} value={audience} />
-        <FilterSelect name="collab" label="Collab status" list={COLLAB_STATUS} value={collab} />
-        <label>
-          Region contains
-          <input name="region" defaultValue={region} maxLength={80} />
-        </label>
-        <button type="submit" className="btn">
-          Filter
-        </button>
-        <a className="btn ghost" href="/admin/creators">
-          Clear
-        </a>
-      </form>
+      <ListSearch base="/admin/creators" q={term} placeholder="Search name, handle or region">
+        <FilterSelect name="status" label="Status" value={status} options={STATUS} />
+        <FilterSelect name="niche" label="Niche" value={niche} options={NICHES} />
+        <FilterSelect name="audience" label="Audience" value={audience} options={CREATOR_AUDIENCE} />
+        <FilterSelect name="collab" label="Collab status" value={collab} options={COLLAB_STATUS} />
+      </ListSearch>
+      <ListTotal total={total} one="creator" />
 
-      <p className="note" style={{ margin: "1.5rem 0 1rem" }}>
-        {creators.length} {creators.length === 1 ? "creator" : "creators"}
-      </p>
-      {creators.length === 0 ? (
-        <div className="empty">No creators match.</div>
+      {list.length === 0 ? (
+        <Empty>
+          {term || status || niche || audience || collab ? (
+            <>
+              No creators match. <a href="/admin/creators">Clear the filters.</a>
+            </>
+          ) : (
+            <>
+              No creator profiles yet. They appear here once a creator saves their card. <a href="/admin/invites/new">Invite a creator.</a>
+            </>
+          )}
+        </Empty>
       ) : (
-        <div className="card-grid">
-          {creators.map((c) => (
-            <div key={c.user_id} className="card-cell">
-              <CreatorCard c={c} size="compact" xConnected={c.x_username} />
-              <p className="note admin-under">
-                <span className="mono">
-                  TG @{c.telegram}
-                  {c.x_followers !== null && ` · X ${c.x_followers.toLocaleString("en-US")}`}
-                </span>
-                <a href={`/admin/members/${c.user_id}`}>Details</a>
-              </p>
-            </div>
-          ))}
-        </div>
+        <TableBox>
+          <thead>
+            <tr>
+              <th>Creator</th>
+              <th>No.</th>
+              <th>Status</th>
+              <th>Collab</th>
+              <th>Audience</th>
+              <th>Region</th>
+              <th>Telegram</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((c) => (
+              <tr key={c.user_id} className="row-link">
+                <td>
+                  <a href={`/admin/members/${c.user_id}`}>{c.display_name}</a>
+                  <div className="note mono">@{c.main_handle}</div>
+                </td>
+                <td className="mono">{creatorNo(c.creator_no).replace("No. ", "")}</td>
+                <td>
+                  <StatusPill on={c.verified}>{c.verified ? "Verified" : "Pending"}</StatusPill>
+                </td>
+                <td>{COLLAB_BADGE[c.collab_status] ?? "-"}</td>
+                <td>
+                  {labelOf(CREATOR_AUDIENCE, c.audience_band)}
+                  {c.x_followers !== null && <div className="note mono">X {c.x_followers.toLocaleString("en-US")}</div>}
+                </td>
+                <td>{c.region}</td>
+                <td className="mono">@{c.telegram}</td>
+                <td>{fmtDate(c.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </TableBox>
       )}
+      <Pager base="/admin/creators" params={params} page={page} total={total} />
     </>
   );
 }

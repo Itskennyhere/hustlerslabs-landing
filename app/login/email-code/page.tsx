@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { AuthShell } from "@/components/ui";
-import { EMAIL_CODE_MINUTES, maskAddress } from "@/lib/email-step";
+import { EMAIL_CODE_MINUTES, maskEmail } from "@/lib/email-step";
 import EmailCodeForm from "./EmailCodeForm";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export default async function EmailCodePage({ searchParams }: { searchParams: Pr
       <div className="tag">Admin check</div>
       <h1>Check your email.</h1>
       <p className="sub">
-        We sent a 6-digit code to <span className="mono">{email ? maskAddress(email) : "your email"}</span>. It expires in{" "}
+        We sent a 6-digit code to <span className="mono">{email ? maskEmail(email) : "your email"}</span>. It expires in{" "}
         {EMAIL_CODE_MINUTES} minutes.
       </p>
       {failed && (

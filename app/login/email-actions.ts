@@ -78,7 +78,7 @@ export async function resetPassword(_: EmailFormState, form: FormData): Promise<
       WHERE token_hash = ${sha256(token)} AND purpose = 'reset' AND used_at IS NULL AND expires_at > now()
       RETURNING user_id`;
     if (!used[0]) return false;
-    await sql`UPDATE users SET password_hash = ${hash} WHERE id = ${used[0].user_id}`;
+    await sql`UPDATE users SET password_hash = ${hash}, password_changed_at = now() WHERE id = ${used[0].user_id}`;
     await sql`DELETE FROM sessions WHERE user_id = ${used[0].user_id}`;
     return true;
   });

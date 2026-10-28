@@ -21,14 +21,23 @@ import {
 } from "@/lib/onboarding-options";
 import CreatorCard from "@/components/CreatorCard";
 import { ProgressBar } from "@/components/WorkspaceChecklist";
-import { setCreatorVerified } from "../../actions";
+import { setCreatorVerified, setMemberDisabled, signOutMember } from "../../actions";
+import { BackLink } from "@/components/list";
+import { fmtDate } from "@/lib/list";
 import { getXAccount } from "@/lib/x-oauth";
 import { EVENT_LABELS, describeDevice, recentEvents } from "@/lib/security";
 
-type UserRow = { id: number; username: string; role: string; account_type: string | null; created_at: string; disabled_at: string | null };
+type UserRow = {
+  id: number;
+  username: string;
+  role: string;
+  account_type: string | null;
+  created_at: string;
+  disabled_at: string | null;
+  email: string | null;
+  last_login_at: string | null;
+};
 
-const fmt = (d: string | Date | null | undefined) =>
-  d ? new Date(d).toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur", day: "numeric", month: "short", year: "numeric" }) : "-";
 
 function Answers({ rows }: { rows: [string, React.ReactNode][] }) {
   return (
@@ -44,25 +53,45 @@ function Answers({ rows }: { rows: [string, React.ReactNode][] }) {
 }
 
 export default async function AdminMemberPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { id: raw } = await params;
   const id = Number(raw);
   if (!Number.isSafeInteger(id) || id <= 0) notFound();
-  const rows = await q<UserRow>`SELECT id, username, role, account_type, created_at, disabled_at FROM users WHERE id = ${id}`;
+  const rows = await q<UserRow>`SELECT id, username, role, account_type, created_at, disabled_at, last_login_at,
+           CASE WHEN email_verified_at IS NOT NULL THEN email END AS email
+    FROM users WHERE id = ${id}`;
   const u = rows[0];
   if (!u) notFound();
 
   const type = u.role === "admin" ? "Admin" : u.account_type === "project" ? "Project" : u.account_type === "creator" ? "Creator" : "Member";
 
+  const self = Number(u.id) === admin.userId;
   return (
     <>
-      <div className="tag">
-        <a href="/admin">Admin</a> / {type}
-      </div>
+      <BackLink href="/admin/members">Back to members</BackLink>
+      <div className="tag">{type}</div>
       <h1>@{u.username}.</h1>
       <p className="sub">
-        {type}. Joined {fmt(u.created_at)}.{u.disabled_at ? " Disabled." : ""}
+        {type}. Joined {fmtDate(u.created_at)}. Last login {fmtDate(u.last_login_at)}.{u.email ? ` Email ${u.email}.` : ""}
+        {u.disabled_at ? " Disabled." : ""}
       </p>
+      {!self && u.role !== "admin" && (
+        <div className="row member-actions">
+          <form action={signOutMember}>
+            <input type="hidden" name="id" value={u.id} />
+            <button className="btn ghost small" type="submit">
+              Sign out everywhere
+            </button>
+          </form>
+          <form action={setMemberDisabled}>
+            <input type="hidden" name="id" value={u.id} />
+            <input type="hidden" name="disable" value={u.disabled_at ? "0" : "1"} />
+            <button className={`btn small ${u.disabled_at ? "ghost" : "danger"}`} type="submit">
+              {u.disabled_at ? "Enable" : "Disable"}
+            </button>
+          </form>
+        </div>
+      )}
       {u.account_type === "project" && <ProjectDetail id={id} />}
       {u.account_type === "creator" && <CreatorDetail id={id} />}
       <SecurityActivity id={id} />
@@ -92,7 +121,7 @@ async function SecurityActivity({ id }: { id: number }) {
             <div>
               <strong>{EVENT_LABELS[e.kind] ?? e.kind}</strong>
               <div className="note">
-                {fmt(e.created_at)} · {describeDevice(e.user_agent)} · <span className="mono">{e.ip ?? "IP unknown"}</span>
+                {fmtDate(e.created_at)} · {describeDevice(e.user_agent)} · <span className="mono">{e.ip ?? "IP unknown"}</span>
               </div>
             </div>
           </li>
@@ -136,7 +165,7 @@ async function ProjectDetail({ id }: { id: number }) {
       <div className="section">
         <h2>Workspace</h2>
         <ProgressBar done={workspaceProgress(w)} />
-        <h3 className="answers-title">Goals {w?.goals_done_at ? `(done ${fmt(w.goals_done_at)})` : "(not done)"}</h3>
+        <h3 className="answers-title">Goals {w?.goals_done_at ? `(done ${fmtDate(w.goals_done_at)})` : "(not done)"}</h3>
         <Answers
           rows={[
             ["Goals", labelsOf(GOALS, w?.goals)],
@@ -145,7 +174,7 @@ async function ProjectDetail({ id }: { id: number }) {
             ["Success in 90 days", w?.success_90d],
           ]}
         />
-        <h3 className="answers-title">Current marketing {w?.marketing_done_at ? `(done ${fmt(w.marketing_done_at)})` : "(not done)"}</h3>
+        <h3 className="answers-title">Current marketing {w?.marketing_done_at ? `(done ${fmtDate(w.marketing_done_at)})` : "(not done)"}</h3>
         <Answers
           rows={[
             ["Who handles marketing", w?.marketing_owner ? labelOf(MARKETING_OWNERS, w.marketing_owner) : null],
@@ -155,7 +184,7 @@ async function ProjectDetail({ id }: { id: number }) {
             ["Tried", labelsOf(TRIED, w?.tried)],
           ]}
         />
-        <h3 className="answers-title">Tools and payment {w?.buying_done_at ? `(done ${fmt(w.buying_done_at)})` : "(not done)"}</h3>
+        <h3 className="answers-title">Tools and payment {w?.buying_done_at ? `(done ${fmtDate(w.buying_done_at)})` : "(not done)"}</h3>
         <Answers
           rows={[
             ["Tools wanted", labelsOf(TOOLS, w?.wanted_tools)],
@@ -186,7 +215,7 @@ async function CreatorDetail({ id }: { id: number }) {
             ["Telegram (admin only)", <span key="tg" className="mono">@{c.telegram}</span>],
             ["X connected", x ? `@${x.username}${x.followers !== null ? `, ${x.followers.toLocaleString("en-US")} followers` : ""}` : "No"],
             ["Languages", c.languages],
-            ["Verified", c.verified ? `Yes, ${fmt(c.verified_at)}` : "No"],
+            ["Verified", c.verified ? `Yes, ${fmtDate(c.verified_at)}` : "No"],
           ]}
         />
         <form action={setCreatorVerified}>

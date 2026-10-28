@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { AuthShell } from "@/components/ui";
 import LoginForm from "./LoginForm";
+import { mailConfigured } from "@/lib/mail";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </p>
       )}
       <LoginForm />
-      <p className="alt">
-        <a href="/login/forgot">Forgot password?</a>
-      </p>
+      {mailConfigured() && (
+        <p className="alt">
+          <a href="/login/forgot">Forgot password?</a>
+        </p>
+      )}
       <p className="alt">
         Got an invite key? <a href="/join">Create your account.</a>
       </p>

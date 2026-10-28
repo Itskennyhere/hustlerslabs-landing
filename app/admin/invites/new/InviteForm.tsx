@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createInvite } from "./actions";
+import { createInvite } from "../../actions";
 import { SubmitButton } from "@/components/ui";
+import { fmtDateTime } from "@/lib/list";
 
 export default function InviteForm() {
   const [state, action] = useActionState(createInvite, undefined);
@@ -13,7 +14,7 @@ export default function InviteForm() {
       <form action={action} className="row">
         <label>
           Who is it for (optional)
-          <input name="label" maxLength={60} placeholder="e.g. Maya" autoComplete="off" />
+          <input name="label" maxLength={60} placeholder="For example, Maya" autoComplete="off" />
         </label>
         <label style={{ flex: "0 0 160px", minWidth: 0 }}>
           Expires in
@@ -49,13 +50,7 @@ export default function InviteForm() {
             </button>
             <span className="note">
               Expires{" "}
-              {new Date(state.expiresAt!).toLocaleString("en-MY", {
-                timeZone: "Asia/Kuala_Lumpur",
-                day: "numeric",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {fmtDateTime(state.expiresAt)}
               . They sign up at hustlerslabs.com/join.
             </span>
           </div>

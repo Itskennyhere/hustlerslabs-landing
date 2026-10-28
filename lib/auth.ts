@@ -6,7 +6,6 @@ import { q } from "./db";
 import { randomToken, sha256 } from "./crypto";
 import { ensureSchema } from "./migrate";
 import { requestInfo } from "./security";
-import { mailConfigured } from "./mail";
 
 const PROD = process.env.NODE_ENV === "production";
 // __Host- prefix: cookie is Secure, host-only and path=/, so subdomains cannot set or read it.
@@ -110,9 +109,9 @@ export async function requireAdmin(): Promise<SessionUser> {
   const s = await requireMember();
   if (s.role !== "admin") redirect("/members");
   // Admin pages need two-step login on.
-  if (!s.totpEnabled) redirect("/members/account?admin2fa=1");
-  // ...and a confirmed email, which gets a code at every admin sign-in.
-  if (mailConfigured() && !s.emailConfirmed) redirect("/members/account?adminemail=1");
+  // A confirmed email is not required here, so the admin can never be locked out by email setup.
+  // Once one is confirmed (and email is set up), every admin sign-in also needs an emailed code.
+  if (!s.totpEnabled) redirect("/members/account/two-step?admin=1");
   return s;
 }
 

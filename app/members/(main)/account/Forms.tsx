@@ -13,18 +13,29 @@ import {
 import { SubmitButton } from "@/components/ui";
 import ProjectFields, { type ProjectValues } from "@/components/ProjectFields";
 
+const BACK = "/members/account";
+
 function Feedback({ state }: { state: Msg }) {
-  if (state?.error && !state.field) return <p className="error" role="alert">{state.error}</p>;
-  if (state?.error) return <p className="error">Check the highlighted field above.</p>;
+  if (state?.error) return <p className="error" role="alert">{state.error}</p>;
   if (state?.ok) return <p className="note" role="status">{state.ok}</p>;
   return null;
 }
 
-function CodeInput() {
+/** App code, or a recovery code where `recovery` is set. */
+function CodeInput({ recovery = false }: { recovery?: boolean }) {
   return (
-    <label style={{ maxWidth: 220 }}>
-      6-digit code
-      <input name="code" className="mono" inputMode="numeric" autoComplete="one-time-code" maxLength={7} required />
+    <label>
+      {recovery ? "6-digit code from your app, or a recovery code" : "6-digit code from your app"}
+      <input
+        name="code"
+        className="mono"
+        inputMode={recovery ? "text" : "numeric"}
+        autoComplete="one-time-code"
+        autoCapitalize="characters"
+        spellCheck={false}
+        maxLength={recovery ? 14 : 7}
+        required
+      />
     </label>
   );
 }
@@ -38,10 +49,17 @@ function CurrentPassword() {
   );
 }
 
-function Plain({ state }: { state: Msg }) {
-  if (state?.error) return <p className="error" role="alert">{state.error}</p>;
-  if (state?.ok) return <p className="note" role="status">{state.ok}</p>;
-  return null;
+function Done({ state }: { state: Msg }) {
+  return (
+    <div className="stack">
+      <p className="note" role="status">
+        {state?.ok}
+      </p>
+      <a className="btn ghost" href={BACK}>
+        Back to Account
+      </a>
+    </div>
+  );
 }
 
 /** Shown once, right after the codes are made. Only their hashes are stored. */
@@ -68,7 +86,7 @@ export function RecoveryCodes({ codes, done }: { codes: string[]; done?: boolean
           {copied ? "Copied" : "Copy codes"}
         </button>
         {done && (
-          <a className="btn small" href="/members/account">
+          <a className="btn small" href="/members/account/two-step">
             I have saved them
           </a>
         )}
@@ -82,13 +100,15 @@ export function ConfirmTotpForm() {
   if (state?.codes) {
     return (
       <>
-        <p className="note" role="status" style={{ marginBottom: "1rem" }}>{state.ok}</p>
+        <p className="note" role="status" style={{ marginBottom: "1rem" }}>
+          {state.ok}
+        </p>
         <RecoveryCodes codes={state.codes} done />
       </>
     );
   }
   return (
-    <form action={action} className="stack" style={{ maxWidth: 400 }}>
+    <form action={action} className="stack narrow">
       <CodeInput />
       <Feedback state={state} />
       <SubmitButton pending="Checking...">Turn on</SubmitButton>
@@ -98,12 +118,15 @@ export function ConfirmTotpForm() {
 
 export function DisableTotpForm() {
   const [state, action] = useActionState(disableTotp, undefined);
+  if (state?.ok) return <Done state={state} />;
   return (
-    <form action={action} className="stack" style={{ maxWidth: 400 }}>
+    <form action={action} className="stack narrow">
       <CurrentPassword />
-      <CodeInput />
-      <Plain state={state} />
-      <SubmitButton className="btn danger" pending="Checking...">Turn off two-step login</SubmitButton>
+      <CodeInput recovery />
+      <Feedback state={state} />
+      <SubmitButton className="btn danger" pending="Checking...">
+        Turn off two-step login
+      </SubmitButton>
     </form>
   );
 }
@@ -113,34 +136,52 @@ export function RecoveryCodesForm() {
   return (
     <>
       {state?.codes && <RecoveryCodes codes={state.codes} />}
-      <form action={action} className="stack" style={{ maxWidth: 400 }}>
+      <form action={action} className="stack narrow">
         <CurrentPassword />
         <CodeInput />
-        <Plain state={state} />
-        <SubmitButton className="btn ghost" pending="Making codes...">Make new recovery codes</SubmitButton>
+        <Feedback state={state} />
+        <SubmitButton className="btn ghost" pending="Making codes...">
+          Make new recovery codes
+        </SubmitButton>
       </form>
     </>
   );
 }
 
-export function PasswordForm() {
+export function PasswordForm({ needsCode }: { needsCode: boolean }) {
   const [state, action] = useActionState(changePassword, undefined);
+  if (state?.ok) return <Done state={state} />;
   return (
-    <form action={action} className="stack" style={{ maxWidth: 400 }}>
-      <label>
-        Current password
-        <input name="current" type="password" autoComplete="current-password" required maxLength={256} />
-      </label>
+    <form action={action} className="stack narrow">
+      <CurrentPassword />
       <label>
         New password
-        <input name="next" type="password" autoComplete="new-password" required minLength={12} maxLength={128} />
+        <input name="new_password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} />
+        <span className="note">At least 12 characters. Passwords found in known data breaches are refused.</span>
       </label>
       <label>
         Confirm new password
         <input name="confirm" type="password" autoComplete="new-password" required minLength={12} maxLength={128} />
       </label>
+      {needsCode && <CodeInput recovery />}
       <Feedback state={state} />
       <SubmitButton pending="Saving...">Update password</SubmitButton>
+    </form>
+  );
+}
+
+export function EmailForm({ current, needsCode }: { current: string | null; needsCode: boolean }) {
+  const [state, action] = useActionState(sendEmailLink, undefined);
+  return (
+    <form action={action} className="stack narrow">
+      <label>
+        {current ? "New email" : "Email"}
+        <input name="email" type="email" autoComplete="email" required maxLength={254} aria-invalid={state?.field === "email" || undefined} />
+      </label>
+      <CurrentPassword />
+      {needsCode && <CodeInput recovery />}
+      <Feedback state={state} />
+      <SubmitButton pending="Sending...">Send confirmation link</SubmitButton>
     </form>
   );
 }
@@ -157,33 +198,10 @@ export function ProjectDetailsForm({ values }: { values: ProjectValues }) {
       }}
     >
       <ProjectFields values={values} err={state?.error ? state : undefined} />
-      <Feedback state={state} />
+      {state?.error && state.field ? <p className="error">Check the highlighted field above.</p> : <Feedback state={state} />}
       <button type="submit" className="btn" disabled={pending}>
         {pending ? "Saving..." : "Save project details"}
       </button>
-    </form>
-  );
-}
-
-export function EmailForm({ current }: { current: string | null }) {
-  const [state, action] = useActionState(sendEmailLink, undefined);
-  return (
-    <form action={action} className="stack" style={{ maxWidth: 400 }}>
-      <label>
-        {current ? "New email" : "Email"}
-        <input
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          maxLength={254}
-          aria-invalid={state?.field === "email" || undefined}
-        />
-      </label>
-      <CurrentPassword />
-      {state?.error && <p className="error" role="alert">{state.error}</p>}
-      {state?.ok && <p className="note" role="status">{state.ok}</p>}
-      <SubmitButton pending="Sending...">Send confirmation link</SubmitButton>
     </form>
   );
 }

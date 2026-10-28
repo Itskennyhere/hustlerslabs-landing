@@ -12,7 +12,7 @@ import { getAccountType, parseProjectProfile, type ProjectProfile } from "@/lib/
 import { EMAIL_RE, FieldError } from "@/lib/validate";
 import { mailConfigured } from "@/lib/mail";
 import { emailTakenByOther, startEmailConfirm } from "@/lib/email-confirm";
-import { checkNewPassword, checkTotp, logEvent, newRecoveryCodes } from "@/lib/security";
+import { checkNewPassword, checkTotp, logEvent, newRecoveryCodes, useRecoveryCode } from "@/lib/security";
 
 export type Msg = { error?: string; ok?: string; field?: string; codes?: string[] } | undefined;
 
@@ -24,6 +24,21 @@ async function passwordOk(s: SessionUser, form: FormData, field = "current_passw
   if (await isLimited(bucket, 5)) return false;
   const rows = await q<{ password_hash: string }>`SELECT password_hash FROM users WHERE id = ${s.userId}`;
   const ok = Boolean(rows[0]) && (await verifyPassword(rows[0].password_hash, String(form.get(field) ?? "").slice(0, 256)));
+  if (!ok) await recordFailure(bucket);
+  return ok;
+}
+
+/**
+ * When two-step login is on: a code from the app, or (if `recovery`) one of the recovery codes.
+ * Always true when two-step login is off.
+ */
+async function secondFactorOk(s: SessionUser, form: FormData, recovery = true): Promise<boolean> {
+  if (!s.totpEnabled) return true;
+  const code = String(form.get("code") ?? "").replace(/\s/g, "").slice(0, 16);
+  if (/^\d{6}$/.test(code) || !recovery) return totpOk(s, form);
+  const bucket = `totp-user:${s.userId}`;
+  if (await isLimited(bucket, 10)) return false;
+  const ok = await useRecoveryCode(s.userId, code);
   if (!ok) await recordFailure(bucket);
   return ok;
 }
@@ -44,7 +59,7 @@ export async function startTotp(): Promise<void> {
   if (s.totpEnabled) return;
   const secret = new Secret({ size: 20 }).base32;
   await q`UPDATE users SET totp_secret_enc = ${encrypt(secret)}, totp_last_step = NULL WHERE id = ${s.userId} AND totp_enabled = false`;
-  revalidatePath("/members/account");
+  revalidatePath("/members/account", "layout");
 }
 
 export async function confirmTotp(_: Msg, form: FormData): Promise<Msg> {
@@ -70,18 +85,18 @@ export async function confirmTotp(_: Msg, form: FormData): Promise<Msg> {
 export async function cancelTotpSetup(): Promise<void> {
   const s = await requireMember();
   await q`UPDATE users SET totp_secret_enc = NULL WHERE id = ${s.userId} AND totp_enabled = false`;
-  revalidatePath("/members/account");
+  revalidatePath("/members/account", "layout");
 }
 
 export async function disableTotp(_: Msg, form: FormData): Promise<Msg> {
   const s = await requireMember();
   if (s.role === "admin") return { error: "Admins must keep two-step login on." };
   if (!(await passwordOk(s, form))) return { error: "Password is wrong, or too many attempts.", field: "current_password" };
-  if (!(await totpOk(s, form))) return { error: "That code did not match, or was already used." };
+  if (!(await secondFactorOk(s, form))) return { error: "That code did not match, or was already used." };
   await q`UPDATE users SET totp_enabled = false, totp_secret_enc = NULL, totp_last_step = NULL WHERE id = ${s.userId}`;
   await q`DELETE FROM recovery_codes WHERE user_id = ${s.userId}`;
   await logEvent(s.userId, "totp_off");
-  revalidatePath("/members/account");
+  revalidatePath("/members/account", "layout");
   return { ok: "Two-step login is off." };
 }
 
@@ -97,29 +112,22 @@ export async function regenerateRecoveryCodes(_: Msg, form: FormData): Promise<M
 
 export async function changePassword(_: Msg, form: FormData): Promise<Msg> {
   const s = await requireMember();
-  const bucket = `pw-change:${s.userId}`;
-  if (await isLimited(bucket, 5)) return { error: SLOW };
+  if (!(await passwordOk(s, form))) return { error: "Current password is wrong, or too many attempts. Try again in 15 minutes." };
 
-  const current = String(form.get("current") ?? "");
-  const next = String(form.get("next") ?? "");
+  const next = String(form.get("new_password") ?? "");
   const confirm = String(form.get("confirm") ?? "");
-
-  const rows = await q<{ password_hash: string }>`SELECT password_hash FROM users WHERE id = ${s.userId}`;
-  if (!rows[0] || !(await verifyPassword(rows[0].password_hash, current))) {
-    await recordFailure(bucket);
-    return { error: "Current password is wrong." };
-  }
   const err = await checkNewPassword(next, s.username);
   if (err) return { error: err };
   if (next !== confirm) return { error: "New passwords do not match." };
+  if (!(await secondFactorOk(s, form))) return { error: "That code did not match, or was already used." };
 
-  await q`UPDATE users SET password_hash = ${await hashPassword(next)} WHERE id = ${s.userId}`;
+  await q`UPDATE users SET password_hash = ${await hashPassword(next)}, password_changed_at = now() WHERE id = ${s.userId}`;
   // Sign out every other device; keep this one.
   const token = (await cookies()).get(SESSION_COOKIE)?.value ?? "";
   await q`DELETE FROM sessions WHERE user_id = ${s.userId} AND token_hash <> ${sha256(token)}`;
   await logEvent(s.userId, "password_changed");
-  revalidatePath("/members/account");
-  return { ok: "Password updated. Other devices have been signed out." };
+  revalidatePath("/members/account", "layout");
+  return { ok: "Password updated. Every other device has been signed out." };
 }
 
 export async function revokeSession(form: FormData): Promise<void> {
@@ -129,14 +137,14 @@ export async function revokeSession(form: FormData): Promise<void> {
   // user_id in the WHERE: a member can only ever sign out their own devices.
   const gone = await q`DELETE FROM sessions WHERE id = ${id} AND user_id = ${s.userId} RETURNING id`;
   if (gone[0]) await logEvent(s.userId, "session_revoked");
-  revalidatePath("/members/account");
+  revalidatePath("/members/account", "layout");
 }
 
 export async function signOutOtherDevices(): Promise<void> {
   const s = await requireMember();
   const gone = await q`DELETE FROM sessions WHERE user_id = ${s.userId} AND id <> ${s.sessionId} RETURNING id`;
   if (gone.length) await logEvent(s.userId, "sessions_revoked");
-  revalidatePath("/members/account");
+  revalidatePath("/members/account", "layout");
 }
 
 export async function updateProjectDetails(_: Msg, form: FormData): Promise<Msg> {
@@ -157,7 +165,7 @@ export async function updateProjectDetails(_: Msg, form: FormData): Promise<Msg>
       budget_band = ${p.budget_band}, contact_name = ${p.contact_name}, contact_role = ${p.contact_role},
       contact_email = ${p.contact_email}, contact_telegram = ${p.contact_telegram}, updated_at = now()
     WHERE user_id = ${s.userId}`;
-  revalidatePath("/members/account");
+  revalidatePath("/members/account", "layout");
   return { ok: "Project details saved." };
 }
 
@@ -167,6 +175,7 @@ export async function sendEmailLink(_: Msg, form: FormData): Promise<Msg> {
   if (email.length > 254 || !EMAIL_RE.test(email)) return { error: "Enter a valid email address.", field: "email" };
   if (!mailConfigured()) return { error: "Email sending is not set up yet. Ask Hustlers Labs to finish the email setup." };
   if (!(await passwordOk(s, form))) return { error: "Password is wrong, or too many attempts.", field: "current_password" };
+  if (!(await secondFactorOk(s, form))) return { error: "That code did not match, or was already used.", field: "code" };
 
   const bucket = `email-link:${s.userId}`;
   if (await isLimited(bucket, 5, 60)) return { error: "Too many emails sent. Try again in an hour." };

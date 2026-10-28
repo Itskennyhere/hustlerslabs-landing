@@ -2,36 +2,17 @@ import { notFound } from "next/navigation";
 import { requireMember } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { getAccountType, getWorkspace, workspaceProgress, WORKSPACE_SECTIONS } from "@/lib/onboarding";
-import { CREATOR_AUDIENCE, NICHES, ROSTER_COLLAB, type Option } from "@/lib/onboarding-options";
+import { CREATOR_AUDIENCE, NICHES, ROSTER_COLLAB } from "@/lib/onboarding-options";
+import { anyOf, pick, type Search } from "@/lib/list";
+import { FilterSelect } from "@/components/list";
 import CreatorCard, { type CreatorCardData } from "@/components/CreatorCard";
 import { ProgressBar } from "@/components/WorkspaceChecklist";
 import IntroButton from "./IntroButton";
 
-type Search = Promise<Record<string, string | string[] | undefined>>;
+
 type Row = CreatorCardData & { user_id: number; x_username: string | null; requested: boolean };
 
-function pick(v: string | string[] | undefined, list: readonly Option[]): string {
-  const s = typeof v === "string" ? v : "";
-  return list.some((o) => o.value === s) ? s : "";
-}
-
-function FilterSelect({ name, label, list, value, any = "Any" }: { name: string; label: string; list: readonly Option[]; value: string; any?: string | null }) {
-  return (
-    <label>
-      {label}
-      <select name={name} defaultValue={value}>
-        {any !== null && <option value="">{any}</option>}
-        {list.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-export default async function CreatorRosterPage({ searchParams }: { searchParams: Search }) {
+export default async function CreatorRosterPage({ searchParams }: { searchParams: Promise<Search> }) {
   const s = await requireMember();
   const type = await getAccountType(s.userId);
   const isAdmin = s.role === "admin";
@@ -58,9 +39,9 @@ export default async function CreatorRosterPage({ searchParams }: { searchParams
   }
 
   const sp = await searchParams;
-  const niche = pick(sp.niche, NICHES);
-  const audience = pick(sp.audience, CREATOR_AUDIENCE);
-  const collab = pick(sp.collab, ROSTER_COLLAB);
+  const niche = pick(sp.niche, anyOf(NICHES), "");
+  const audience = pick(sp.audience, anyOf(CREATOR_AUDIENCE), "");
+  const collab = pick(sp.collab, anyOf(ROSTER_COLLAB), "");
 
   // Projects only ever see verified creators who take collabs. No Telegram or contact details are selected.
   const regions = (
@@ -69,7 +50,7 @@ export default async function CreatorRosterPage({ searchParams }: { searchParams
       WHERE c.verified AND c.collab_status IN ('yes', 'case_by_case') AND u.disabled_at IS NULL
       GROUP BY lower(c.region) ORDER BY 1`
   ).map((r) => ({ value: r.region, label: r.region }));
-  const region = pick(sp.region, regions);
+  const region = pick(sp.region, anyOf(regions), "");
 
   const creators = await q<Row>`
     SELECT c.user_id, c.creator_no, c.created_at, c.display_name, c.bio, c.platforms, c.main_handle, c.main_platform,
@@ -101,10 +82,10 @@ export default async function CreatorRosterPage({ searchParams }: { searchParams
 
       <form method="get">
         <div className="filter-grid">
-          <FilterSelect name="niche" label="Niche" list={NICHES} value={niche} />
-          <FilterSelect name="audience" label="Audience" list={CREATOR_AUDIENCE} value={audience} />
-          <FilterSelect name="collab" label="Collab status" list={ROSTER_COLLAB} value={collab} any={null} />
-          <FilterSelect name="region" label="Region" list={regions} value={region} />
+          <FilterSelect name="niche" label="Niche" options={NICHES} value={niche} />
+          <FilterSelect name="audience" label="Audience" options={CREATOR_AUDIENCE} value={audience} />
+          <FilterSelect name="collab" label="Collab status" options={ROSTER_COLLAB} value={collab} any={null} />
+          <FilterSelect name="region" label="Region" options={regions} value={region} />
         </div>
         <div className="filter-actions">
           <button type="submit" className="btn small">

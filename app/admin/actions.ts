@@ -12,7 +12,6 @@ const ALLOWED_HOURS = new Set([24, 48, 168]);
 
 export async function createInvite(_: InviteState, form: FormData): Promise<InviteState> {
   const admin = await requireAdmin();
-  if (!admin.totpEnabled) return { error: "Turn on two-step login in Account before generating invite keys." };
 
   const label = String(form.get("label") ?? "").trim().slice(0, 60) || null;
   const hours = Number(form.get("hours"));
@@ -22,7 +21,7 @@ export async function createInvite(_: InviteState, form: FormData): Promise<Invi
   const expires = new Date(Date.now() + hours * 3_600_000);
   await q`INSERT INTO invites (key_hash, label, created_by, expires_at)
           VALUES (${sha256(key)}, ${label}, ${admin.userId}, ${expires.toISOString()})`;
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   // The plain key is returned exactly once. Only its hash is stored.
   return { key, label: label ?? undefined, expiresAt: expires.toISOString() };
 }
@@ -32,7 +31,7 @@ export async function revokeInvite(form: FormData): Promise<void> {
   const id = Number(form.get("id"));
   if (!Number.isSafeInteger(id)) return;
   await q`UPDATE invites SET revoked_at = now() WHERE id = ${id} AND used_at IS NULL AND revoked_at IS NULL`;
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function setMemberDisabled(form: FormData): Promise<void> {
@@ -46,7 +45,7 @@ export async function setMemberDisabled(form: FormData): Promise<void> {
   } else {
     await q`UPDATE users SET disabled_at = NULL WHERE id = ${id}`;
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function setCreatorVerified(form: FormData): Promise<void> {
@@ -56,8 +55,8 @@ export async function setCreatorVerified(form: FormData): Promise<void> {
   if (!Number.isSafeInteger(id)) return;
   await q`UPDATE creator_profiles SET verified = ${verify}, verified_at = ${verify ? new Date().toISOString() : null}, updated_at = now()
           WHERE user_id = ${id}`;
-  revalidatePath(`/admin/members/${id}`);
-  revalidatePath("/admin/creators");
+  revalidatePath("/admin", "layout");
+  revalidatePath("/members/creators");
 }
 
 export async function signOutMember(form: FormData): Promise<void> {
@@ -65,7 +64,7 @@ export async function signOutMember(form: FormData): Promise<void> {
   const id = Number(form.get("id"));
   if (!Number.isSafeInteger(id) || id === admin.userId) return;
   await destroyAllSessionsFor(id);
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function setIntroStatus(form: FormData): Promise<void> {

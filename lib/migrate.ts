@@ -95,6 +95,7 @@ const EMAIL_STATEMENTS = [
 // Account security: 2FA replay guard, recovery codes, device list and activity log.
 const SECURITY_STATEMENTS = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_last_step BIGINT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ`,
   `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip TEXT`,
   `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_agent TEXT`,
   `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ`,

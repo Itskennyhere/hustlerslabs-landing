@@ -41,5 +41,5 @@ export async function runSetup(_: SetupState, form: FormData): Promise<SetupStat
   if (!created[0]) return { error: "Setup has already been completed." };
 
   await createSession(Number(created[0].id), true);
-  redirect("/members/account");
+  redirect("/members/account/two-step");
 }

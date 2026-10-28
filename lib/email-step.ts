@@ -3,6 +3,7 @@ import { createHmac, randomInt } from "node:crypto";
 import { q } from "./db";
 import { safeEqual } from "./crypto";
 import { mailConfigured, sendMail } from "./mail";
+export { maskEmail } from "./mail";
 import { describeDevice, requestInfo } from "./security";
 
 // Admins finish every sign-in with a 6-digit code sent to their confirmed email,
@@ -23,11 +24,6 @@ export async function emailStepAddress(userId: number): Promise<string | null> {
     SELECT role, email, email_verified_at FROM users WHERE id = ${userId}`;
   const u = rows[0];
   return u && u.role === "admin" && u.email_verified_at && u.email ? u.email : null;
-}
-
-export function maskAddress(email: string): string {
-  const [user, domain] = email.split("@");
-  return `${user.slice(0, 2)}${"*".repeat(Math.max(1, user.length - 2))}@${domain}`;
 }
 
 /**
