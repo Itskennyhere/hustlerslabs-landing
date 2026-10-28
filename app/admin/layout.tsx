@@ -23,6 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             { href: "/admin/creators", label: "Creators" },
             { href: "/admin/intros", label: "Intros", count: newIntros },
             { href: "/admin/insights", label: "Insights" },
+            { href: "/members/tools", label: "Tools" },
           ]}
         />
       </nav>

@@ -335,3 +335,33 @@ td.wrap-cell { white-space: normal; min-width: 220px; max-width: 360px; overflow
 .invite-row { display: flex; gap: 0.5rem; }
 .invite-row input { flex: 1; min-width: 0; }
 .invite-row .btn { flex: 0 0 auto; }
+
+/* X Profile Scanner */
+.xs { display: flex; flex-direction: column; gap: 1.25rem; }
+.xs form.row > label { min-width: 220px; }
+.xs-status { display: flex; flex-direction: column; gap: 2px; }
+.xs-alert { border: 1px solid var(--ink); background: var(--ink); color: #fff; padding: 0.875rem 1rem; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.xs-results { display: flex; flex-direction: column; gap: 1.5rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
+.xs-profile { display: flex; gap: 1rem; align-items: flex-start; min-width: 0; }
+.xs-avatar { width: 72px; height: 72px; }
+.xs-avatar img { filter: grayscale(1); }
+.xs-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.xs-id h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 20px; font-weight: 500; }
+.xs-bio { font-size: 14px; color: #333; white-space: pre-line; overflow-wrap: anywhere; margin-top: 0.5rem; }
+.xs-block { display: flex; flex-direction: column; gap: 0.75rem; border: 1px solid var(--line); padding: 1.25rem; }
+.xs-block h3 { font-size: 16px; font-weight: 500; }
+.xs-rating { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; }
+.xs-grade { width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; background: var(--ink); color: #fff; font-family: 'DM Mono', monospace; font-size: 28px; }
+.xs-detail { display: block; font-size: 12px; }
+.xs-niche { font-size: 22px; }
+.xs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
+.xs-two .answers-title { margin-top: 0.5rem; }
+.xs-list { padding-left: 1.1rem; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.xs-post { border-top: 1px solid var(--line); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.xs-post-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.xs-post-text { white-space: pre-line; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .xs-two { grid-template-columns: 1fr; }
+  .xs .bars li { grid-template-columns: 1fr auto; }
+  .xs .bars-track { grid-column: 1 / -1; grid-row: 2; }
+}

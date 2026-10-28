@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "2.2.2",
@@ -24,6 +25,7 @@
     "@types/qrcode": "1.5.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19",
+    "tsx": "^4.23.15",
     "typescript": "5.9.3"
   },
   "engines": {

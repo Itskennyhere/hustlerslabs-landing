@@ -26,7 +26,7 @@ Members area on Next.js (App Router), Postgres (Neon) and plain CSS. Anyone can 
 | `/members/profile` | Creators: set up or edit the creator card, Connect X (only shown when X is set up). Creators without a card are sent here |
 | `/members/profile/saved` | Creators: "Your card is live." after the first save |
 | `/members/workspace`, `/members/workspace/<section>` | Projects: Goals, Current marketing, Tools and payment |
-| `/members/tools` | Tools. Locked for projects until the workspace is 3/3 |
+| `/members/tools` | Tools: the X Profile Scanner. Locked for projects until the workspace is 3/3 |
 | `/members/creators` | Projects with a finished workspace, and admins: verified creators, Request intro |
 | `/members/account` | Settings list: two-step login, email, password, signed-in devices, recent activity, project details (projects) |
 | `/members/account/<two-step, email, password, devices, activity, project>` | One page per setting |
@@ -57,6 +57,7 @@ Set them in Vercel > Project > Settings > Environment Variables. `.env.example` 
 | `SMTP_USER`, `SMTP_PASS` | For email | Gmail address and a Google app password. Without them, email features are off: no reset, no alerts, no admin email code |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `MAIL_FROM`, `APP_URL` | No | Mail server (defaults to Gmail), sender, and the base address for links (defaults to https://www.hustlerslabs.com) |
 | `X_CLIENT_ID`, `X_CLIENT_SECRET` | For Connect X | From an X developer app (Web App, Read, callback `https://www.hustlerslabs.com/members/profile/x/callback`). Without them Connect X is hidden |
+| `SORSA_API_KEY`, `ANTHROPIC_API_KEY` | For the scanner | Sorsa (profile, score, followers) and Anthropic (niche and post ideas). `ANTHROPIC_MODEL` is optional, default `claude-sonnet-5-5` |
 | `X_AUTH_BASE`, `X_API_BASE`, `PWNED_API_BASE` | No | Tests only |
 
 ## Security in brief
@@ -74,7 +75,18 @@ Set them in Vercel > Project > Settings > Environment Variables. `.env.example` 
 
 `lib/migrate.ts` (`ensureSchema()`) brings the schema up to date on first request. It only adds (`CREATE ... IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`) and is safe to run any number of times. Preview deployments share the production database, so never drop or rename anything.
 
-Tables: `users` (with `approved_at`, `is_owner`), `invites` (invite codes, `kind` is `admin` or `member`), `sessions`, `auth_attempts`, `email_tokens`, `security_events`, `recovery_codes`, `creator_profiles`, `project_profiles`, `project_workspace`, `intro_requests`, `x_accounts`.
+Tables: `users` (with `approved_at`, `is_owner`), `invites` (invite codes, `kind` is `admin` or `member`), `sessions`, `auth_attempts`, `email_tokens`, `security_events`, `recovery_codes`, `creator_profiles`, `project_profiles`, `project_workspace`, `intro_requests`, `x_accounts`, `x_scan_quota`, `x_scan_cache`.
+
+## X Profile Scanner
+
+`components/tools/XScanner.tsx` on `/members/tools`, backed by `POST /api/x-scan` (and `GET` for scans left today).
+
+- The API checks the session the same way members pages do (401 when signed out or mid sign-in) and keeps the project workspace lock (403).
+- Each account gets `DAILY_SCAN_LIMIT` (in `lib/xscan/quota.ts`, now 1) successful scans per day, shared by every page that mounts the scanner. The day resets at midnight Malaysia time. Admins have no limit.
+- The quota is taken in one SQL statement before Sorsa or Anthropic is called, and given back if the scan fails. Rows in `x_scan_quota` are keyed by user and Malaysia date.
+- Results are cached per handle for 24 hours in `x_scan_cache`. A cache hit is free.
+- Rating weights are at the top of `lib/xscan/rating.ts`. All AI text goes through `lib/humanize.ts`.
+- Tests: `npm test`.
 
 ## Option lists
 

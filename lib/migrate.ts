@@ -168,6 +168,22 @@ const APPROVAL_STATEMENTS = [
   `CREATE UNIQUE INDEX IF NOT EXISTS users_one_owner_idx ON users (is_owner) WHERE is_owner`,
 ];
 
+// X Profile Scanner: daily scan quota per account (Malaysia date) and a 24 hour result cache per handle.
+const XSCAN_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS x_scan_quota (
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kl_date     DATE NOT NULL,
+    used        INT NOT NULL DEFAULT 0 CHECK (used >= 0),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, kl_date)
+  )`,
+  `CREATE TABLE IF NOT EXISTS x_scan_cache (
+    handle      TEXT PRIMARY KEY,
+    result      JSONB NOT NULL,
+    scanned_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+];
+
 let pending: Promise<void> | null = null;
 
 /** Brings the schema up to date. Runs at most once per server instance. */
@@ -175,7 +191,7 @@ export function ensureSchema(): Promise<void> {
   pending ??= (async () => {
     const sql = db();
     // Base tables first (also idempotent), so a fresh database works before /setup has run.
-    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS, ...SECURITY_STATEMENTS, ...ROSTER_STATEMENTS, ...APPROVAL_STATEMENTS]) await sql.unsafe(stmt);
+    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS, ...SECURITY_STATEMENTS, ...ROSTER_STATEMENTS, ...APPROVAL_STATEMENTS, ...XSCAN_STATEMENTS]) await sql.unsafe(stmt);
   })().catch((err) => {
     pending = null; // let the next request retry
     throw err;
