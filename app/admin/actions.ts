@@ -11,11 +11,14 @@ import { checkTotp, logEvent } from "@/lib/security";
 import { sendApprovedEmail } from "@/lib/approval";
 import { INTRO_STATUS } from "@/lib/onboarding-options";
 
-export type InviteState = { key?: string; label?: string; expiresAt?: string; error?: string } | undefined;
+export type InviteState = { key?: string; kind?: string; label?: string; expiresAt?: string; error?: string } | undefined;
 
 const ALLOWED_HOURS = new Set([24, 48, 168]);
 
-/** Admin keys create admin accounts, so only the owner makes them, and only after re-entering password and code. */
+/**
+ * Invite codes: admin codes create admin accounts, preferred codes skip the team review.
+ * Only the owner makes them, and only after re-entering password and code.
+ */
 export async function createInvite(_: InviteState, form: FormData): Promise<InviteState> {
   const owner = await requireOwner();
   const bucket = `reauth:${owner.userId}`;
@@ -29,6 +32,8 @@ export async function createInvite(_: InviteState, form: FormData): Promise<Invi
     return { error: "Password or code is wrong." };
   }
 
+  const kind = String(form.get("kind") ?? "");
+  if (kind !== "admin" && kind !== "member") return { error: "Pick what the code is for." };
   const label = String(form.get("label") ?? "").trim().slice(0, 60) || null;
   const hours = Number(form.get("hours"));
   if (!ALLOWED_HOURS.has(hours)) return { error: "Pick a valid expiry." };
@@ -36,18 +41,18 @@ export async function createInvite(_: InviteState, form: FormData): Promise<Invi
   const key = generateInviteKey();
   const expires = new Date(Date.now() + hours * 3_600_000);
   await q`INSERT INTO invites (key_hash, label, created_by, expires_at, kind)
-          VALUES (${sha256(key)}, ${label}, ${owner.userId}, ${expires.toISOString()}, 'admin')`;
+          VALUES (${sha256(key)}, ${label}, ${owner.userId}, ${expires.toISOString()}, ${kind})`;
   await logEvent(owner.userId, "admin_key_created");
   revalidatePath("/admin", "layout");
   // The plain key is returned exactly once. Only its hash is stored.
-  return { key, label: label ?? undefined, expiresAt: expires.toISOString() };
+  return { key, kind, label: label ?? undefined, expiresAt: expires.toISOString() };
 }
 
 export async function revokeInvite(form: FormData): Promise<void> {
   await requireOwner();
   const id = Number(form.get("id"));
   if (!Number.isSafeInteger(id)) return;
-  await q`UPDATE invites SET revoked_at = now() WHERE id = ${id} AND kind = 'admin' AND used_at IS NULL AND revoked_at IS NULL`;
+  await q`UPDATE invites SET revoked_at = now() WHERE id = ${id} AND kind IN ('admin', 'member') AND used_at IS NULL AND revoked_at IS NULL`;
   revalidatePath("/admin", "layout");
 }
 

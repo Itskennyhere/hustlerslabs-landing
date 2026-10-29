@@ -8,14 +8,14 @@ Members area on Next.js (App Router), Postgres (Neon) and plain CSS. Anyone can 
 
 | Page | What |
 | --- | --- |
-| `/login` | Sign in with email or username, and password |
+| `/login` | Sign in with email or username, and password. Below it, an **Invite code** box: a valid code opens a special setup page instead |
 | `/login/verify` | Authenticator app code, or a recovery code |
 | `/login/email-code` | Admins only, when email is set up and the admin has a confirmed email: a 6-digit code sent by email |
 | `/login/forgot`, `/login/reset` | Password reset by email. Hidden when email is not set up |
 | `/login/confirm-email` | Confirms an email from the link we send |
 | `/join` | Sign-up, no key: account type, login details, project details (projects only) |
 | `/join/waiting` | New members wait here: first confirm their email (when email is set up), then a team member approves them. Creators can set up their card while they wait |
-| `/join/admin` | New admins sign up here with an admin key from the owner. They must turn on two-step login before Admin opens |
+| `/join/special` | Only reachable through the Invite code box. Owner key: an existing admin signs in (password and app code) and becomes the owner, once. Admin code: creates an admin account, who must then turn on two-step login. A preferred code goes to `/join` instead and skips the team review |
 | `/setup` | Creates the first admin once, then returns 404 |
 
 **Members** (every page checks the session itself)
@@ -31,14 +31,13 @@ Members area on Next.js (App Router), Postgres (Neon) and plain CSS. Anyone can 
 | `/members/account` | Settings list: two-step login, email, password, signed-in devices, recent activity, project details (projects) |
 | `/members/account/<two-step, email, password, devices, activity, project>` | One page per setting |
 
-**Admins** (role `admin`, two-step login on). One admin is the **owner**: the only one who can generate admin keys and sign out or disable other admins.
+**Admins** (role `admin`, two-step login on). One admin is the **owner**: the only one who can generate invite codes and sign out or disable other admins.
 
 | Page | What |
 | --- | --- |
 | `/admin` | Overview tiles and a short Needs attention list, new sign-ups first |
 | `/admin/members`, `/admin/members/<id>` | Members list (search, filters including Waiting for approval, sort) and one member: answers, card, Telegram, Approve or Decline, Sign out, Disable or Enable, Verify |
-| `/admin/invites`, `/admin/invites/new` | Owner only. Admin keys by status, and Generate key (needs the owner's password and app code) |
-| `/admin/owner` | One time only: the first admin to enter `OWNER_CLAIM_TOKEN` becomes the owner. Gone once there is an owner |
+| `/admin/invites`, `/admin/invites/new` | Owner only. Invite codes (Admin or Preferred) by status, and Generate code (needs the owner's password and app code) |
 | `/admin/creators` | Creators, pending review first |
 | `/admin/intros` | Intro requests by status, with a status per row |
 | `/admin/insights` | What projects ask for: tools, payment, budget, goals |
@@ -54,7 +53,7 @@ Set them in Vercel > Project > Settings > Environment Variables. `.env.example` 
 | `DATABASE_URL` | Yes | Postgres connection string. `POSTGRES_URL` or the Neon integration's prefixed names also work |
 | `AUTH_SECRET` | Yes | 32+ random characters. Encrypts 2FA secrets. Never change it |
 | `ADMIN_SETUP_TOKEN` | Once | For `/setup` |
-| `OWNER_CLAIM_TOKEN` | Once | One-time owner key for `/admin/owner`. Works until an owner exists |
+| `OWNER_CLAIM_TOKEN` | Once | One-time owner key, entered in the Invite code box on `/login`. Works until an owner exists |
 | `SMTP_USER`, `SMTP_PASS` | For email | Gmail address and a Google app password. Without them, email features are off: no reset, no alerts, no admin email code |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `MAIL_FROM`, `APP_URL` | No | Mail server (defaults to Gmail), sender, and the base address for links (defaults to https://www.hustlerslabs.com) |
 | `X_CLIENT_ID`, `X_CLIENT_SECRET` | For Connect X | From an X developer app (Web App, Read, callback `https://www.hustlerslabs.com/members/profile/x/callback`). Without them Connect X is hidden |
@@ -63,7 +62,7 @@ Set them in Vercel > Project > Settings > Environment Variables. `.env.example` 
 ## Security in brief
 
 - New members: email confirmed (when email is set up) and approved by a team member before they get in. At most 5 sign-ups per network per hour. The team is emailed when someone is waiting; the member is emailed when approved.
-- Admin keys only create admins, only the owner makes them, and keys made before admin keys existed never work.
+- Invite codes are entered on the sign-in page and are checked again when used. Only the owner makes them. Admin codes create admins; preferred codes skip the review. Each works once, and keys made before codes had a type never work. Wrong codes are limited per network.
 - Argon2id passwords; breached passwords refused. Sessions are random tokens stored as hashes, in a `__Host-` cookie. Members stay signed in 7 days, admins 12 hours.
 - Two-step login with an app, one-time recovery codes, codes usable once, wrong codes limited per account. Required for admins.
 - Admins also get an emailed code at sign-in once email is set up and their email is confirmed. Nothing blocks the admin before that: a banner asks them to set it up.
@@ -75,7 +74,7 @@ Set them in Vercel > Project > Settings > Environment Variables. `.env.example` 
 
 `lib/migrate.ts` (`ensureSchema()`) brings the schema up to date on first request. It only adds (`CREATE ... IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`) and is safe to run any number of times. Preview deployments share the production database, so never drop or rename anything.
 
-Tables: `users` (with `approved_at`, `is_owner`), `invites` (admin keys, `kind = 'admin'`), `sessions`, `auth_attempts`, `email_tokens`, `security_events`, `recovery_codes`, `creator_profiles`, `project_profiles`, `project_workspace`, `intro_requests`, `x_accounts`.
+Tables: `users` (with `approved_at`, `is_owner`), `invites` (invite codes, `kind` is `admin` or `member`), `sessions`, `auth_attempts`, `email_tokens`, `security_events`, `recovery_codes`, `creator_profiles`, `project_profiles`, `project_workspace`, `intro_requests`, `x_accounts`.
 
 ## Option lists
 

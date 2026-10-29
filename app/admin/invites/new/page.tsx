@@ -6,12 +6,13 @@ export default async function NewInvitePage() {
   await requireOwner();
   return (
     <>
-      <BackLink href="/admin/invites">Back to admin keys</BackLink>
+      <BackLink href="/admin/invites">Back to invite codes</BackLink>
       <div className="tag">Admin</div>
-      <h1>Generate an admin key.</h1>
+      <h1>Generate an invite code.</h1>
       <p className="sub">
-        An admin key creates a new admin account. Only give one to someone joining the team. Each key works once. Members and
-        creators do not need a key: they sign up at hustlerslabs.com/join and wait for approval.
+        Each code works once and is entered in the Invite code box on the sign-in page. A preferred code lets a member skip the
+        team review. An admin code creates a new admin, so only give one to someone joining the team. Everyone else signs up
+        normally and waits for approval.
       </p>
       <InviteForm />
     </>

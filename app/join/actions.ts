@@ -14,6 +14,7 @@ import { EMAIL_RE, FieldError } from "@/lib/validate";
 import { emailTakenByOther, sendConfirmEmail } from "@/lib/email-confirm";
 import { createEmailToken } from "@/lib/email-tokens";
 import { notifyAdminsOfSignup } from "@/lib/approval";
+import { clearInviteTicket, readInviteTicket } from "@/lib/invite-code";
 
 export type JoinState = { error?: string; field?: string } | undefined;
 
@@ -65,14 +66,25 @@ export async function join(_: JoinState, form: FormData): Promise<JoinState> {
   if (await emailTakenByOther(email, null)) return { error: "That email is already linked to another account.", field: "email" };
 
   const passwordHash = await hashPassword(password);
+  // A preferred code from the owner skips the team review. It is used up in the same transaction.
+  const ticket = await readInviteTicket();
+  const preferred = ticket?.kind === "member" ? ticket.hash : null;
 
   // One transaction: the user and their project rows, or nothing.
   let userId: number;
   try {
     userId = await db().begin(async (sql) => {
+      let inviteId: number | null = null;
+      if (preferred) {
+        const inv = await sql<{ id: number }[]>`
+          UPDATE invites SET used_at = now()
+          WHERE key_hash = ${preferred} AND kind = 'member' AND used_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+          RETURNING id`;
+        inviteId = inv[0] ? Number(inv[0].id) : null; // an expired code just means the normal review
+      }
       const created = await sql<{ id: number }[]>`
-        INSERT INTO users (username, password_hash, role, account_type)
-        VALUES (${u.value}, ${passwordHash}, 'member', ${accountType})
+        INSERT INTO users (username, password_hash, role, account_type, invite_id, approved_at)
+        VALUES (${u.value}, ${passwordHash}, 'member', ${accountType}, ${inviteId}, ${inviteId ? new Date() : null})
         RETURNING id`;
       const id = Number(created[0].id);
       if (project) {
@@ -97,6 +109,7 @@ export async function join(_: JoinState, form: FormData): Promise<JoinState> {
     return { error: "Something went wrong. Nothing was saved. Try again." };
   }
   await recordFailure(signupBucket); // counts successful sign-ups per network
+  if (preferred) await clearInviteTicket();
 
   // Saved now so the waiting page can show it; the email goes out after the response.
   const confirmToken = await createEmailToken(userId, "verify", email);
