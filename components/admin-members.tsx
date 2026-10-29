@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { hrefWith } from "@/lib/list";
 import type { StatusCounts } from "@/lib/member-lists";
 import { STATUS_LABEL, type MemberStatus } from "./card-parts";
@@ -25,14 +26,14 @@ export function ViewBar({ base, params, view, preview }: { base: string; params:
     <div className="view-bar">
       <nav className="view-switch" aria-label="View">
         {VIEWS.map((v) => (
-          <a key={v} href={hrefWith(base, { ...params, view: v === "cards" ? "" : v })} aria-current={view === v ? "page" : undefined}>
+          <Link key={v} href={hrefWith(base, { ...params, view: v === "cards" ? "" : v })} aria-current={view === v ? "page" : undefined}>
             {v === "cards" ? "Cards" : "Table"}
-          </a>
+          </Link>
         ))}
       </nav>
-      <a className="view-preview" href={hrefWith(base, { ...params, preview: preview ? "" : "1" })}>
+      <Link className="view-preview" href={hrefWith(base, { ...params, preview: preview ? "" : "1" })}>
         {preview ? "Hide example card" : "Preview example card"}
-      </a>
+      </Link>
     </div>
   );
 }
@@ -47,7 +48,7 @@ export function CardLink({ id, label, children }: { id: number; label: string; c
   return (
     <div className="card-link">
       {children}
-      <a className="card-link-cover" href={`/admin/members/${id}`} aria-label={label} />
+      <Link className="card-link-cover" href={`/admin/members/${id}`} aria-label={label} />
     </div>
   );
 }

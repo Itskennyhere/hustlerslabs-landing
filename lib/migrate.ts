@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { db } from "./db";
 import { SCHEMA_STATEMENTS } from "./schema.sql";
 
@@ -184,14 +185,34 @@ const XSCAN_STATEMENTS = [
   )`,
 ];
 
+const ALL_STATEMENTS = [
+  ...SCHEMA_STATEMENTS,
+  ...ONBOARDING_STATEMENTS,
+  ...EMAIL_STATEMENTS,
+  ...SECURITY_STATEMENTS,
+  ...ROSTER_STATEMENTS,
+  ...APPROVAL_STATEMENTS,
+  ...XSCAN_STATEMENTS,
+];
+// Changes whenever a statement is added or edited, so new migrations always run.
+const FINGERPRINT = createHash("sha256").update(ALL_STATEMENTS.join("\n;\n")).digest("hex");
+
 let pending: Promise<void> | null = null;
 
-/** Brings the schema up to date. Runs at most once per server instance. */
+/**
+ * Brings the schema up to date. Runs at most once per server instance, and when the database already
+ * has this exact set of statements it is a single quick read instead of one round trip per statement.
+ */
 export function ensureSchema(): Promise<void> {
   pending ??= (async () => {
     const sql = db();
+    const done = await sql<{ fingerprint: string }[]>`SELECT fingerprint FROM app_schema WHERE id = 1`.catch(() => []);
+    if (done[0]?.fingerprint === FINGERPRINT) return;
     // Base tables first (also idempotent), so a fresh database works before /setup has run.
-    for (const stmt of [...SCHEMA_STATEMENTS, ...ONBOARDING_STATEMENTS, ...EMAIL_STATEMENTS, ...SECURITY_STATEMENTS, ...ROSTER_STATEMENTS, ...APPROVAL_STATEMENTS, ...XSCAN_STATEMENTS]) await sql.unsafe(stmt);
+    for (const stmt of ALL_STATEMENTS) await sql.unsafe(stmt);
+    await sql.unsafe(`CREATE TABLE IF NOT EXISTS app_schema (id INT PRIMARY KEY, fingerprint TEXT NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
+    await sql`INSERT INTO app_schema (id, fingerprint) VALUES (1, ${FINGERPRINT})
+              ON CONFLICT (id) DO UPDATE SET fingerprint = EXCLUDED.fingerprint, applied_at = now()`;
   })().catch((err) => {
     pending = null; // let the next request retry
     throw err;
