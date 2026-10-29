@@ -20,7 +20,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             { href: "/admin", label: "Overview" },
             { href: "/admin/members", label: "Members", count: waiting },
             ...(user.isOwner ? [{ href: "/admin/invites", label: "Invite codes" }] : []),
-            { href: "/admin/creators", label: "Creators" },
             { href: "/admin/intros", label: "Intros", count: newIntros },
             { href: "/admin/insights", label: "Insights" },
             { href: "/members/tools", label: "Tools" },

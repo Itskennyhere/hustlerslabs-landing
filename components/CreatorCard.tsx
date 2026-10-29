@@ -1,6 +1,7 @@
 import { COLLAB_CARD_TEXT, CREATOR_AUDIENCE, NICHES, PLATFORMS, labelOf } from "@/lib/onboarding-options";
 import { PLATFORM_SHORT, avatarUrl, cleanHandle, initials, platformUrl } from "@/lib/platforms";
 import Avatar from "./Avatar";
+import { CardStrip, StatusChip, VerifiedTick, cardNo, joined, since, type MemberStatus } from "./card-parts";
 
 // Everything the card may show. Telegram is deliberately not part of this type.
 export type CreatorCardData = {
@@ -19,20 +20,7 @@ export type CreatorCardData = {
   verified?: boolean;
 };
 
-export const creatorNo = (n: number | null | undefined) => (n ? `No. ${String(n).padStart(4, "0")}` : "No. ----");
-
-const since = (d: string | Date | null | undefined) =>
-  `Since ${new Date(d ?? Date.now()).toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })}`;
-
-function Mark() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 160 160" aria-hidden="true">
-      <rect x="10" y="10" width="18" height="140" rx="3" fill="#0a0a0a" />
-      <rect x="132" y="10" width="18" height="140" rx="3" fill="#0a0a0a" />
-      <polygon points="28,68 150,50 150,72 28,90" fill="#5BDD2F" />
-    </svg>
-  );
-}
+export const creatorNo = cardNo;
 
 /**
  * The creator ID card. Works in server pages and in the profile form's live preview.
@@ -40,6 +28,7 @@ function Mark() {
  * - `owner`: the viewer is this creator, so an unverified card shows "Pending review".
  * - `xConnected`: the X username proved through Connect X, if any.
  * - `action`: replaces the "Since" date in the footer (the roster's Request intro button).
+ * - `status`: admin views only. Adds the status chip and shows the joined date.
  */
 export default function CreatorCard({
   c,
@@ -47,12 +36,14 @@ export default function CreatorCard({
   owner = false,
   xConnected = null,
   action,
+  status,
 }: {
   c: CreatorCardData;
   size?: "full" | "compact";
   owner?: boolean;
   xConnected?: string | null;
   action?: React.ReactNode;
+  status?: MemberStatus;
 }) {
   const full = size === "full";
   const name = c.display_name || "Your name";
@@ -68,15 +59,7 @@ export default function CreatorCard({
 
   return (
     <article className={`ccard ${size}`}>
-      {full && (
-        <header className="ccard-strip">
-          <span className="ccard-brand">
-            <Mark />
-            Hustlers Labs creator
-          </span>
-          <span>{creatorNo(c.creator_no)}</span>
-        </header>
-      )}
+      {full && <CardStrip type="creator" no={creatorNo(c.creator_no)} />}
 
       <div className="ccard-body">
         <div className="ccard-identity">
@@ -85,12 +68,7 @@ export default function CreatorCard({
             <h3>
               <span className="ccard-name">{name}</span>
               {c.verified ? (
-                <span className="verified" role="img" aria-label="Verified by Hustlers Labs" title="Verified by Hustlers Labs">
-                  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                    <circle cx="8" cy="8" r="8" fill="#5BDD2F" />
-                    <path d="M4.5 8.2 7 10.5l4.5-5" stroke="#0a0a0a" strokeWidth="1.6" fill="none" />
-                  </svg>
-                </span>
+                <VerifiedTick />
               ) : (
                 owner && <span className="pending-chip">Pending review</span>
               )}
@@ -178,7 +156,8 @@ export default function CreatorCard({
         ) : (
           <span />
         )}
-        {action ?? <span className="ccard-since">{since(c.created_at)}</span>}
+        {status && <StatusChip status={status} />}
+        {action ?? <span className="ccard-since">{status ? joined(c.created_at) : since(c.created_at)}</span>}
       </footer>
     </article>
   );
