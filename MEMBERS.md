@@ -31,6 +31,8 @@ Members area on Next.js (App Router), Postgres (Neon) and plain CSS. Anyone can 
 | `/members/account` | Settings list: two-step login, email, password, signed-in devices, recent activity, project details (projects) |
 | `/members/account/<two-step, email, password, devices, activity, project>` | One page per setting |
 
+Every member page has a **Feedback** button at the bottom right (not shown to admins). It opens a short form: what it's about (something I'd like to see, something to improve, something isn't working) and a message, up to 10 a day. Each note is saved for Admin > Feedback and emailed to `hello@hustlerslabs.com` when email is set up.
+
 **Admins** (role `admin`, two-step login on). One admin is the **owner**: the only one who can generate invite codes and sign out or disable other admins.
 
 | Page | What |
@@ -44,6 +46,7 @@ Members area on Next.js (App Router), Postgres (Neon) and plain CSS. Anyone can 
 | `/admin/invites`, `/admin/invites/new` | Owner only. Invite codes (Admin or Preferred) by status, and Generate code (needs the owner's password and app code) |
 | `/admin/creators` | Old address, redirects to `/admin/members/creators` |
 | `/admin/intros` | Intro requests by status, with a status per row |
+| `/admin/feedback` | Feedback from the member pages' button: New, Read, Done and All tabs, search, filter by kind, a status per row. The nav shows how many are new |
 | `/admin/insights` | What projects ask for: tools, payment, budget, goals |
 
 List pages show 25 rows a page. Search, filters, tab, sort and page are in the URL.
@@ -62,6 +65,7 @@ Set them in Vercel > Project > Settings > Environment Variables. `.env.example` 
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `MAIL_FROM`, `APP_URL` | No | Mail server (defaults to Gmail), sender, and the base address for links (defaults to https://www.hustlerslabs.com) |
 | `X_CLIENT_ID`, `X_CLIENT_SECRET` | For Connect X | From an X developer app (Web App, Read, callback `https://www.hustlerslabs.com/members/profile/x/callback`). Without them Connect X is hidden |
 | `SORSA_API_KEY`, `ANTHROPIC_API_KEY` | For the scanner | Sorsa (profile, score, followers) and Anthropic (niche and post ideas). `ANTHROPIC_MODEL` is optional, default `claude-sonnet-5-5` |
+| `FEEDBACK_EMAIL` | No | Where feedback is emailed. Defaults to hello@hustlerslabs.com |
 | `X_AUTH_BASE`, `X_API_BASE`, `PWNED_API_BASE` | No | Tests only |
 
 ## Security in brief

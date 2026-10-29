@@ -185,6 +185,21 @@ const XSCAN_STATEMENTS = [
   )`,
 ];
 
+// Feedback members send from the button at the bottom right of their pages.
+const FEEDBACK_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS feedback (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind        TEXT NOT NULL CHECK (kind IN ('idea','improve','problem')),
+    message     TEXT NOT NULL CHECK (char_length(message) BETWEEN 1 AND 1000),
+    page        TEXT CHECK (char_length(page) <= 200),
+    status      TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','read','done')),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS feedback_status_idx ON feedback(status, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS feedback_user_idx ON feedback(user_id, created_at DESC)`,
+];
+
 const ALL_STATEMENTS = [
   ...SCHEMA_STATEMENTS,
   ...ONBOARDING_STATEMENTS,
@@ -193,6 +208,7 @@ const ALL_STATEMENTS = [
   ...ROSTER_STATEMENTS,
   ...APPROVAL_STATEMENTS,
   ...XSCAN_STATEMENTS,
+  ...FEEDBACK_STATEMENTS,
 ];
 // Changes whenever a statement is added or edited, so new migrations always run.
 const FINGERPRINT = createHash("sha256").update(ALL_STATEMENTS.join("\n;\n")).digest("hex");
