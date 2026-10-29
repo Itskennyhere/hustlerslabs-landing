@@ -30,7 +30,7 @@ export type SessionUser = {
   emailConfirmed: boolean;
   /** Members need a team member's approval before they are let in. Admins always are. */
   approved: boolean;
-  /** The one admin with full control (admin keys, managing other admins). */
+  /** The one admin with full control (invite codes, managing other admins). */
   isOwner: boolean;
 };
 

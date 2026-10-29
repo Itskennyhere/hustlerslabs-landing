@@ -7,6 +7,8 @@ import { clientIp, clearFailures, isLimited, recordFailure } from "@/lib/ratelim
 import { completeMfa, createSession, destroySession, getSession, type SessionUser } from "@/lib/auth";
 import { checkTotp, logEvent, useRecoveryCode } from "@/lib/security";
 import { checkEmailCode, emailStepAddress, sendEmailCode } from "@/lib/email-step";
+import { ensureSchema } from "@/lib/migrate";
+import { checkInviteCode, setInviteTicket } from "@/lib/invite-code";
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
@@ -144,6 +146,21 @@ export async function resendEmailCode(_: FormState): Promise<FormState> {
   if (sent === "limit") return { error: "Too many codes sent for this sign-in. Sign in again." };
   if (sent === "failed") return { error: "Could not send the email. Try again in a minute." };
   return { ok: "New code sent. Earlier codes no longer work." };
+}
+
+/** The Invite code box on the sign-in page: a valid code opens its setup page. */
+export async function redeemInviteCode(_: FormState, form: FormData): Promise<FormState> {
+  await ensureSchema();
+  const bucket = `invite-ip:${await clientIp()}`;
+  if (await isLimited(bucket, 10)) return { error: "Too many attempts. Try again in 15 minutes." };
+  const ticket = await checkInviteCode(String(form.get("invite_code") ?? ""));
+  if (!ticket) {
+    await recordFailure(bucket);
+    await new Promise((r) => setTimeout(r, 800)); // slow down guessing
+    return { error: "That invite code is not valid." };
+  }
+  await setInviteTicket(ticket);
+  redirect(ticket.kind === "member" ? "/join" : "/join/special");
 }
 
 export async function logout(): Promise<void> {

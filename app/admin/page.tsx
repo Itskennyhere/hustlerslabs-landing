@@ -19,7 +19,7 @@ const ATTENTION_TEXT: Record<Attention["kind"], (a: Attention) => string> = {
   approval: (a) => `New sign-up to approve: ${a.label}`,
   intro: (a) => `New intro request: ${a.label}`,
   creator: (a) => `Creator to verify: ${a.label}`,
-  key: (a) => `Invite key ${a.label} expires within 24 hours`,
+  key: (a) => `Invite code ${a.label} expires within 24 hours`,
 };
 const ATTENTION_HREF: Record<Attention["kind"], (a: Attention) => string> = {
   approval: (a) => `/admin/members/${a.ref}`,
@@ -37,7 +37,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
         (SELECT count(*)::int FROM users WHERE role = 'member' AND approved_at IS NULL AND disabled_at IS NULL) AS waiting,
         EXISTS (SELECT 1 FROM users WHERE is_owner) AS has_owner,
         (SELECT count(*)::int FROM users WHERE created_at > now() - interval '7 days') AS members_week,
-        (SELECT count(*)::int FROM invites WHERE kind = 'admin' AND used_at IS NULL AND revoked_at IS NULL AND expires_at > now()) AS keys_active,
+        (SELECT count(*)::int FROM invites WHERE kind IN ('admin', 'member') AND used_at IS NULL AND revoked_at IS NULL AND expires_at > now()) AS keys_active,
         (SELECT count(*)::int FROM intro_requests WHERE status = 'new') AS intros_new,
         (SELECT count(*)::int FROM creator_profiles c JOIN users u ON u.id = c.user_id
           WHERE NOT c.verified AND u.disabled_at IS NULL) AS creators_pending,
@@ -66,7 +66,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
         UNION ALL
         (SELECT 'key', i.id, coalesce('for ' || i.label, 'without a name'), i.expires_at
          FROM invites i
-         WHERE ${admin.isOwner}::boolean AND i.kind = 'admin' AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now() AND i.expires_at < now() + interval '24 hours'
+         WHERE ${admin.isOwner}::boolean AND i.kind IN ('admin', 'member') AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now() AND i.expires_at < now() + interval '24 hours'
          ORDER BY i.expires_at LIMIT 2)
       ) a
       ORDER BY (kind = 'approval') DESC, (kind = 'key') DESC, at DESC
@@ -82,12 +82,12 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
 
       {(await searchParams).owner === "1" && admin.isOwner && (
         <p className="banner-inline" role="status">
-          You are now the owner. You can generate admin keys and manage other admins.
+          You are now the owner. You can generate invite codes and manage other admins.
         </p>
       )}
       {!c.has_owner && (process.env.OWNER_CLAIM_TOKEN ?? "").length >= 24 && (
         <p className="banner-inline" role="status">
-          No owner yet. <a href="/admin/owner">Claim it with the one-time owner key.</a>
+          No owner yet. Sign out, enter the one-time owner key in the Invite code box on the sign-in page, and sign in with your admin login.
         </p>
       )}
 
@@ -98,7 +98,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
         <Tile href="/admin/creators?status=pending" title="Creators" value={c.creators_pending} note="Pending review" />
         <Tile href="/admin/members?type=project&workspace=open" title="Projects" value={c.projects_open} note="Workspace unfinished" />
         <Tile href="/admin/insights" title="Insights" value="View" note="What projects ask for" />
-        {admin.isOwner && <Tile href="/admin/invites" title="Admin keys" value={c.keys_active} note="Active" />}
+        {admin.isOwner && <Tile href="/admin/invites" title="Invite codes" value={c.keys_active} note="Active" />}
       </div>
 
       <div className="section">
