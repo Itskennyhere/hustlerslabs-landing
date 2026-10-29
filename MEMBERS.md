@@ -1,37 +1,90 @@
-# Members area
+# Members area: short guide
 
-Private, invite-only area behind the public site.
+Members area on Next.js (App Router), Postgres (Neon) and plain CSS. Anyone can sign up as a project or creator; a team member approves each new account before it opens. The public landing page and blog are static files in `public/` and are served as before.
 
-## Pages
+## Pages and who can see them
 
-| Path | Who | What |
+**Anyone**
+
+| Page | What |
+| --- | --- |
+| `/login` | Sign in with email or username, and password |
+| `/login/verify` | Authenticator app code, or a recovery code |
+| `/login/email-code` | Admins only, when email is set up and the admin has a confirmed email: a 6-digit code sent by email |
+| `/login/forgot`, `/login/reset` | Password reset by email. Hidden when email is not set up |
+| `/login/confirm-email` | Confirms an email from the link we send |
+| `/join` | Sign-up, no key: account type, login details, project details (projects only) |
+| `/join/waiting` | New members wait here: first confirm their email (when email is set up), then a team member approves them. Creators can set up their card while they wait |
+| `/join/admin` | New admins sign up here with an admin key from the owner. They must turn on two-step login before Admin opens |
+| `/setup` | Creates the first admin once, then returns 404 |
+
+**Members** (every page checks the session itself)
+
+| Page | What |
+| --- | --- |
+| `/members` | Home. Creators see their card; projects see the workspace checklist |
+| `/members/profile` | Creators: set up or edit the creator card, Connect X (only shown when X is set up). Creators without a card are sent here |
+| `/members/profile/saved` | Creators: "Your card is live." after the first save |
+| `/members/workspace`, `/members/workspace/<section>` | Projects: Goals, Current marketing, Tools and payment |
+| `/members/tools` | Tools. Locked for projects until the workspace is 3/3 |
+| `/members/creators` | Projects with a finished workspace, and admins: verified creators, Request intro |
+| `/members/account` | Settings list: two-step login, email, password, signed-in devices, recent activity, project details (projects) |
+| `/members/account/<two-step, email, password, devices, activity, project>` | One page per setting |
+
+**Admins** (role `admin`, two-step login on). One admin is the **owner**: the only one who can generate admin keys and sign out or disable other admins.
+
+| Page | What |
+| --- | --- |
+| `/admin` | Overview tiles and a short Needs attention list, new sign-ups first |
+| `/admin/members`, `/admin/members/<id>` | Members list (search, filters including Waiting for approval, sort) and one member: answers, card, Telegram, Approve or Decline, Sign out, Disable or Enable, Verify |
+| `/admin/invites`, `/admin/invites/new` | Owner only. Admin keys by status, and Generate key (needs the owner's password and app code) |
+| `/admin/owner` | One time only: the first admin to enter `OWNER_CLAIM_TOKEN` becomes the owner. Gone once there is an owner |
+| `/admin/creators` | Creators, pending review first |
+| `/admin/intros` | Intro requests by status, with a status per row |
+| `/admin/insights` | What projects ask for: tools, payment, budget, goals |
+
+List pages show 25 rows a page. Search, filters, tab, sort and page are in the URL.
+
+## Environment variables
+
+Set them in Vercel > Project > Settings > Environment Variables. `.env.example` lists the same with comments.
+
+| Variable | Needed | What |
 | --- | --- | --- |
-| `/login` | Anyone | Sign in |
-| `/join` | Anyone with an invite key | Create account with own username and password |
-| `/members` | Members | Members home |
-| `/members/tools` | Members | Tools (empty for now) |
-| `/members/account` | Members | Two-step login, change password |
-| `/admin` | Admin only | Generate invite keys, revoke keys, sign out or disable members |
-| `/setup` | Once | Creates the admin account, then returns 404 forever |
+| `DATABASE_URL` | Yes | Postgres connection string. `POSTGRES_URL` or the Neon integration's prefixed names also work |
+| `AUTH_SECRET` | Yes | 32+ random characters. Encrypts 2FA secrets. Never change it |
+| `ADMIN_SETUP_TOKEN` | Once | For `/setup` |
+| `OWNER_CLAIM_TOKEN` | Once | One-time owner key for `/admin/owner`. Works until an owner exists |
+| `SMTP_USER`, `SMTP_PASS` | For email | Gmail address and a Google app password. Without them, email features are off: no reset, no alerts, no admin email code |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `MAIL_FROM`, `APP_URL` | No | Mail server (defaults to Gmail), sender, and the base address for links (defaults to https://www.hustlerslabs.com) |
+| `X_CLIENT_ID`, `X_CLIENT_SECRET` | For Connect X | From an X developer app (Web App, Read, callback `https://www.hustlerslabs.com/members/profile/x/callback`). Without them Connect X is hidden |
+| `X_AUTH_BASE`, `X_API_BASE`, `PWNED_API_BASE` | No | Tests only |
 
-The public landing page and blog in `public/` are served exactly as before.
+## Security in brief
 
-## Security
+- New members: email confirmed (when email is set up) and approved by a team member before they get in. At most 5 sign-ups per network per hour. The team is emailed when someone is waiting; the member is emailed when approved.
+- Admin keys only create admins, only the owner makes them, and keys made before admin keys existed never work.
+- Argon2id passwords; breached passwords refused. Sessions are random tokens stored as hashes, in a `__Host-` cookie. Members stay signed in 7 days, admins 12 hours.
+- Two-step login with an app, one-time recovery codes, codes usable once, wrong codes limited per account. Required for admins.
+- Admins also get an emailed code at sign-in once email is set up and their email is confirmed. Nothing blocks the admin before that: a banner asks them to set it up.
+- Changing the password or email, or turning off 2FA, needs the current password and a 2FA code. A password change signs out other devices.
+- Alerts by email for new-device sign-ins and security changes. Activity log on Account and on each member's admin page.
+- Every page and server action checks the session and role itself. Members only read and write their own rows. All SQL goes through the `q` helper with bound parameters.
 
-- Passwords hashed with Argon2id. Invite keys and session tokens stored only as SHA-256 hashes.
-- Invite keys: single use, expire (24h, 48h or 7 days), revocable. Burned and account created in one atomic statement.
-- Sessions: random 256-bit token in a `__Host-` httpOnly, Secure, SameSite cookie. Checked against the database on every protected page and every action.
-- Two-step login (authenticator app), required for the admin before invite keys can be generated. 2FA secrets encrypted at rest (AES-256-GCM).
-- Rate limits: 5 failed logins per username and 20 per IP per 15 minutes. Invite and 2FA attempts limited too.
-- Disabling a member signs them out instantly. Changing password signs out other devices.
-- Private pages: noindex, no-store, cannot be framed.
+## Database
 
-## Environment variables (Vercel > Project > Settings > Environment Variables)
+`lib/migrate.ts` (`ensureSchema()`) brings the schema up to date on first request. It only adds (`CREATE ... IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`) and is safe to run any number of times. Preview deployments share the production database, so never drop or rename anything.
 
-- `DATABASE_URL`: added automatically by connecting a Neon Postgres database (Vercel > Storage).
-- `AUTH_SECRET`: 32+ random characters. Never change it after setup or 2FA stops working.
-- `ADMIN_SETUP_TOKEN`: one-time token for `/setup`.
+Tables: `users` (with `approved_at`, `is_owner`), `invites` (admin keys, `kind = 'admin'`), `sessions`, `auth_attempts`, `email_tokens`, `security_events`, `recovery_codes`, `creator_profiles`, `project_profiles`, `project_workspace`, `intro_requests`, `x_accounts`.
 
-## Adding a tool later
+## Option lists
 
-Create `app/members/tools/<name>/page.tsx` and start it with `await requireMember();`.
+Every choice list (niches, chains, budgets, goals, tools, intro statuses and so on) and every limit (max goals, max tools, intros per day) is in `lib/onboarding-options.ts`. Forms render from it and the server validates against it. Labels are safe to change and options safe to add. Never change or remove a value that is in use, because it is stored in the database.
+
+## Adding a tool page
+
+1. Create `app/members/(main)/tools/<name>/page.tsx`. Start it with `const s = await requireMember();`.
+2. For projects, keep the workspace lock: `if ((await getAccountType(s.userId)) === "project" && !(await workspaceComplete(s.userId))) redirect("/members/tools");`.
+3. Read and write only the signed-in user's rows (`WHERE user_id = ${s.userId}`), with the `q` helper.
+4. Add a link to it on `/members/tools`.
+5. For a list, use `lib/list.ts` and `components/list.tsx` (search, filters, tabs, 25 per page, pager).

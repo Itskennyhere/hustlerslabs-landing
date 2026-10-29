@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
       { source: "/login/:path*", headers: privateHeaders },
       { source: "/login", headers: privateHeaders },
       { source: "/join", headers: privateHeaders },
+      { source: "/join/:path*", headers: privateHeaders },
       { source: "/setup", headers: privateHeaders },
     ];
   },

@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { db, q } from "@/lib/db";
 import { SCHEMA_STATEMENTS } from "@/lib/schema.sql";
 import { safeEqual, sha256 } from "@/lib/crypto";
-import { hashPassword, validatePassword, validateUsername } from "@/lib/password";
+import { hashPassword, validateUsername } from "@/lib/password";
+import { checkNewPassword } from "@/lib/security";
 import { createSession } from "@/lib/auth";
 import { adminExists } from "@/lib/setup";
 
@@ -24,7 +25,7 @@ export async function runSetup(_: SetupState, form: FormData): Promise<SetupStat
   const u = validateUsername(String(form.get("username") ?? ""));
   if (!u.ok) return { error: u.error };
   const password = String(form.get("password") ?? "");
-  const err = validatePassword(password, u.value);
+  const err = await checkNewPassword(password, u.value);
   if (err) return { error: err };
   if (password !== String(form.get("confirm") ?? "")) return { error: "Passwords do not match." };
 
@@ -40,5 +41,5 @@ export async function runSetup(_: SetupState, form: FormData): Promise<SetupStat
   if (!created[0]) return { error: "Setup has already been completed." };
 
   await createSession(Number(created[0].id), true);
-  redirect("/members/account");
+  redirect("/members/account/two-step");
 }
