@@ -395,3 +395,27 @@ td.wrap-cell { white-space: normal; min-width: 220px; max-width: 360px; overflow
 .example-ribbon { position: absolute; top: 22px; right: -46px; z-index: 2; transform: rotate(45deg); background: var(--ink); color: #fff; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; padding: 4px 52px; pointer-events: none; }
 .example-card figcaption { margin-top: 0.5rem; }
 .example-inner .ccard-strip { padding-right: 72px; }
+
+/* Feedback button, bottom right of member pages */
+.feedback { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem; }
+.feedback-toggle {
+  font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  background: var(--ink); color: var(--bg); border: 1px solid var(--ink); padding: 0.7rem 1.1rem; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+.feedback-toggle:hover { background: #333; }
+.feedback-toggle[aria-expanded="true"] { background: var(--bg); color: var(--ink); }
+.feedback-panel {
+  width: min(360px, calc(100vw - 2.5rem)); background: var(--bg); border: 1px solid var(--ink);
+  padding: 1.25rem; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+.feedback-form, .feedback-thanks { display: flex; flex-direction: column; gap: 0.75rem; }
+.feedback-form h2, .feedback-thanks h2 { font-size: 16px; margin-bottom: 0; }
+.feedback-thanks p { font-size: 13px; color: var(--muted); }
+.feedback-thanks .btn { align-self: flex-start; }
+.feedback-kinds { border: 0; display: flex; flex-direction: column; gap: 6px; }
+.feedback-kinds label { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); cursor: pointer; }
+.feedback-kinds input { width: auto; accent-color: var(--ink); }
+.feedback-form textarea { min-height: 96px; font-size: 13px; }
+.feedback-form .btn { align-self: flex-start; }
+@media (max-width: 640px) { .feedback { right: 1rem; bottom: 1rem; } }

@@ -10,6 +10,7 @@ import { isLimited, recordFailure } from "@/lib/ratelimit";
 import { checkTotp, logEvent } from "@/lib/security";
 import { sendApprovedEmail } from "@/lib/approval";
 import { INTRO_STATUS } from "@/lib/onboarding-options";
+import { FEEDBACK_STATUS } from "@/lib/feedback-options";
 
 export type InviteState = { key?: string; kind?: string; label?: string; expiresAt?: string; error?: string } | undefined;
 
@@ -121,5 +122,14 @@ export async function setIntroStatus(form: FormData): Promise<void> {
   const status = String(form.get("status") ?? "");
   if (!Number.isSafeInteger(id) || !INTRO_STATUS.some((o) => o.value === status)) return;
   await q`UPDATE intro_requests SET status = ${status}, updated_at = now() WHERE id = ${id}`;
+  revalidatePath("/admin", "layout");
+}
+
+export async function setFeedbackStatus(form: FormData): Promise<void> {
+  await requireAdmin();
+  const id = Number(form.get("id"));
+  const status = String(form.get("status") ?? "");
+  if (!Number.isSafeInteger(id) || !FEEDBACK_STATUS.some((o) => o.value === status)) return;
+  await q`UPDATE feedback SET status = ${status} WHERE id = ${id}`;
   revalidatePath("/admin", "layout");
 }

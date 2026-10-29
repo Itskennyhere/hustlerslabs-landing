@@ -5,15 +5,16 @@ import Shell from "@/components/Shell";
 import NavLinks from "@/components/NavLinks";
 import { newIntroCount } from "@/lib/onboarding";
 import { pendingApprovals } from "@/lib/approval";
+import { newFeedbackCount } from "@/lib/feedback";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await ensureSchema();
   const user = await requireAdmin();
-  const [email, newIntros, waiting] = await Promise.all([getEmailStatus(user.userId), newIntroCount(), pendingApprovals()]);
+  const [email, newIntros, waiting, newFeedback] = await Promise.all([getEmailStatus(user.userId), newIntroCount(), pendingApprovals(), newFeedbackCount()]);
   return (
-    <Shell user={user} email={email} newIntros={newIntros + waiting}>
+    <Shell user={user} email={email} newIntros={newIntros + waiting + newFeedback}>
       <nav className="subnav" aria-label="Admin">
         <NavLinks
           links={[
@@ -21,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             { href: "/admin/members", label: "Members", count: waiting },
             ...(user.isOwner ? [{ href: "/admin/invites", label: "Invite codes" }] : []),
             { href: "/admin/intros", label: "Intros", count: newIntros },
+            { href: "/admin/feedback", label: "Feedback", count: newFeedback },
             { href: "/admin/insights", label: "Insights" },
             { href: "/members/tools", label: "Tools" },
           ]}

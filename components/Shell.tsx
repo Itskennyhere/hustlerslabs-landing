@@ -5,18 +5,22 @@ import type { EmailStatus } from "@/lib/email-confirm";
 import { Logo } from "./ui";
 import { mailConfigured } from "@/lib/mail";
 import NavLinks from "./NavLinks";
+import FeedbackButton from "./FeedbackButton";
 
 export default function Shell({
   user,
   accountType = null,
   email = null,
   newIntros = 0,
+  feedback = false,
   children,
 }: {
   user: SessionUser;
   accountType?: AccountType | null;
   email?: EmailStatus | null;
   newIntros?: number;
+  /** Show the Feedback button at the bottom right. Member pages only, not Admin. */
+  feedback?: boolean;
   children: React.ReactNode;
 }) {
   const links = [
@@ -65,6 +69,7 @@ export default function Shell({
         </div>
       )}
       <main className="page">{children}</main>
+      {feedback && <FeedbackButton />}
     </>
   );
 }
