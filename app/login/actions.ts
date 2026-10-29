@@ -15,6 +15,7 @@ export type FormState = { error?: string; ok?: string } | undefined;
 const GENERIC = "Invalid email or password.";
 
 export async function login(_: FormState, form: FormData): Promise<FormState> {
+  await ensureSchema(); // sign-in reads columns that older databases do not have yet
   // Sign in with the confirmed email. The username still works for accounts that have no confirmed email yet.
   const ident = String(form.get("username") ?? "").trim().toLowerCase().slice(0, 254);
   const password = String(form.get("password") ?? "").slice(0, 256);

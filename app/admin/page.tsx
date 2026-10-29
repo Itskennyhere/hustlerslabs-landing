@@ -93,10 +93,10 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
 
       <div className="tiles">
         <Tile href="/admin/members" title="Members" value={c.members} note={`${c.members_week} new this week`} />
-        <Tile href="/admin/members?status=pending" title="Waiting for approval" value={c.waiting} note="New sign-ups" />
+        <Tile href="/admin/members/all?status=pending" title="Waiting for approval" value={c.waiting} note="New sign-ups" />
         <Tile href="/admin/intros?tab=new" title="Intro requests" value={c.intros_new} note="New" />
-        <Tile href="/admin/creators?status=pending" title="Creators" value={c.creators_pending} note="Pending review" />
-        <Tile href="/admin/members?type=project&workspace=open" title="Projects" value={c.projects_open} note="Workspace unfinished" />
+        <Tile href="/admin/members/creators?tab=approved&verified=no" title="Creators" value={c.creators_pending} note="Pending review" />
+        <Tile href="/admin/members/all?type=project&workspace=open" title="Projects" value={c.projects_open} note="Workspace unfinished" />
         <Tile href="/admin/insights" title="Insights" value="View" note="What projects ask for" />
         {admin.isOwner && <Tile href="/admin/invites" title="Invite codes" value={c.keys_active} note="Active" />}
       </div>

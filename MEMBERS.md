@@ -36,9 +36,13 @@ Members area on Next.js (App Router), Postgres (Neon) and plain CSS. Anyone can 
 | Page | What |
 | --- | --- |
 | `/admin` | Overview tiles and a short Needs attention list, new sign-ups first |
-| `/admin/members`, `/admin/members/<id>` | Members list (search, filters including Waiting for approval, sort) and one member: answers, card, Telegram, Approve or Decline, Sign out, Disable or Enable, Verify |
+| `/admin/members` | Members chooser: Projects, Investors and Creators tiles with counts, and a link to the full table |
+| `/admin/members/projects`, `/admin/members/creators` | Cards (or a table) of everyone who registered as that type. Status tabs (Waiting for approval, Approved, Declined, Disabled), search, filters, 25 per page, all in the URL. Each card opens the member page. When a type has nobody yet, an example card shows instead; `?preview=1` shows it above real members |
+| `/admin/members/investors` | Preview only: the example investor card. Investor sign-up is not open yet |
+| `/admin/members/all` | The full members table (search, filters including Waiting for approval, sort) |
+| `/admin/members/<id>` | One member (numeric ids only): answers, card, Telegram, Approve or Decline, Sign out, Disable or Enable, Verify |
 | `/admin/invites`, `/admin/invites/new` | Owner only. Invite codes (Admin or Preferred) by status, and Generate code (needs the owner's password and app code) |
-| `/admin/creators` | Creators, pending review first |
+| `/admin/creators` | Old address, redirects to `/admin/members/creators` |
 | `/admin/intros` | Intro requests by status, with a status per row |
 | `/admin/insights` | What projects ask for: tools, payment, budget, goals |
 
@@ -87,6 +91,12 @@ Tables: `users` (with `approved_at`, `is_owner`), `invites` (invite codes, `kind
 - Results are cached per handle for 24 hours in `x_scan_cache`. A cache hit is free.
 - Rating weights are at the top of `lib/xscan/rating.ts`. All AI text goes through `lib/humanize.ts`.
 - Tests: `npm test`.
+
+## Cards
+
+`components/CreatorCard.tsx`, `ProjectCard.tsx` and `InvestorCard.tsx` share the ID-card pieces in `components/card-parts.tsx` (header strip, stats, tags, status chip, example frame). Admin views add a status chip and the joined date; Telegram and email never appear on a card.
+
+The example cards come from `lib/sample-cards.ts`. They are clearly fake, never stored, and fill every field (long names, the most tags) so overflow problems show up. `InvestorCardData` there is the type real investor data will fill when investor sign-up opens.
 
 ## Option lists
 

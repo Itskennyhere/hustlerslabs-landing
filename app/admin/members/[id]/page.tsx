@@ -57,6 +57,8 @@ function Answers({ rows }: { rows: [string, React.ReactNode][] }) {
 export default async function AdminMemberPage({ params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
   const { id: raw } = await params;
+  // Numeric ids only: /admin/members/abc is a 404, not a lookup.
+  if (!/^[1-9]\d{0,15}$/.test(raw)) notFound();
   const id = Number(raw);
   if (!Number.isSafeInteger(id) || id <= 0) notFound();
   const rows = await q<UserRow>`SELECT id, username, role, account_type, created_at, disabled_at, last_login_at, approved_at, is_owner,
