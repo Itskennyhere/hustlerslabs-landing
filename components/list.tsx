@@ -1,24 +1,25 @@
+import Link from "next/link";
 import { hrefWith, pageCount, plural } from "@/lib/list";
 
 // Shared building blocks for overview and list pages. Server components, no client JS.
 
 export function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a className="back" href={href}>
+    <Link className="back" href={href}>
       <span aria-hidden="true">&larr; </span>
       {children}
-    </a>
+    </Link>
   );
 }
 
 /** Overview tile: a big number that links to its page. */
 export function Tile({ href, title, value, note }: { href: string; title: string; value: string | number; note?: string }) {
   return (
-    <a className="tile" href={href}>
+    <Link className="tile" href={href}>
       <span className="tile-title">{title}</span>
       <span className="tile-value">{value}</span>
       {note && <span className="tile-note">{note}</span>}
-    </a>
+    </Link>
   );
 }
 
@@ -26,13 +27,13 @@ export function Tile({ href, title, value, note }: { href: string; title: string
 export function SettingsRow({ href, title, status, action = "Manage" }: { href: string; title: string; status: React.ReactNode; action?: string }) {
   return (
     <li>
-      <a className="settings-row" href={href}>
+      <Link className="settings-row" href={href}>
         <span className="settings-text">
           <span className="settings-title">{title}</span>
           <span className="settings-status">{status}</span>
         </span>
         <span className="settings-action">{action}</span>
-      </a>
+      </Link>
     </li>
   );
 }
@@ -53,10 +54,10 @@ export function Tabs({
   return (
     <nav className="tabs" aria-label="Filter">
       {tabs.map((t) => (
-        <a key={t.value} href={hrefWith(base, { ...params, [name]: t.value, page: 1 })} aria-current={t.value === current ? "page" : undefined}>
+        <Link key={t.value} href={hrefWith(base, { ...params, [name]: t.value, page: 1 })} aria-current={t.value === current ? "page" : undefined}>
           {t.label}
           {t.count !== undefined && <span className="tab-count">{t.count}</span>}
-        </a>
+        </Link>
       ))}
     </nav>
   );
@@ -155,9 +156,9 @@ export function Pager({ base, params, page, total }: { base: string; params: Rec
   return (
     <nav className="pager" aria-label="Pages">
       {page > 1 ? (
-        <a className="btn ghost small" href={hrefWith(base, { ...params, page: page - 1 })} rel="prev">
+        <Link className="btn ghost small" href={hrefWith(base, { ...params, page: page - 1 })} rel="prev">
           Previous
-        </a>
+        </Link>
       ) : (
         <span className="btn ghost small" aria-disabled="true">
           Previous
@@ -167,9 +168,9 @@ export function Pager({ base, params, page, total }: { base: string; params: Rec
         Page {Math.min(page, pages)} of {pages}
       </span>
       {page < pages ? (
-        <a className="btn ghost small" href={hrefWith(base, { ...params, page: page + 1 })} rel="next">
+        <Link className="btn ghost small" href={hrefWith(base, { ...params, page: page + 1 })} rel="next">
           Next
-        </a>
+        </Link>
       ) : (
         <span className="btn ghost small" aria-disabled="true">
           Next
